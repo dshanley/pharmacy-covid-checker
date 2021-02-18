@@ -1,0 +1,108 @@
+## Front end for vaccinenotifier.org
+
+service: pharmsite 
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  region: us-west-2
+
+plugins:
+  - serverless-finch
+
+custom:
+  stage: ${opt:stage, self:provider.stage}
+  hostedZoneId: Z2FDTNDATAQYW2
+  domains:
+    prod: vaccinenotifier.org
+    dev: dev.vaccinenotifier.org
+    local: localhost
+  client:
+    bucketName: ${self:custom.domains.${self:custom.stage}}
+    distributionFolder: ./build
+    manageResources: false
+  cloudFrontDomainName:
+    Fn::GetAtt:
+      - CloudFrontDistribution
+      - DomainName
+
+resources:
+  Resources:
+    WebsiteBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.domains.${self:custom.stage}}
+        AccessControl: PublicRead
+        WebsiteConfiguration:
+          IndexDocument: index.html
+          ErrorDocument: index.html
+      # DeletionPolicy: Retain
+    WebsiteBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: ${self:custom.domains.${self:custom.stage}}
+        PolicyDocument:
+          Statement:
+          - Sid: PublicReadForGetBucketObjects
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: "arn:aws:s3:::${self:custom.domains.${self:custom.stage}}/*"
+    CloudFrontDistribution:
+      Type: AWS::CloudFront::Distribution
+      Properties:
+        Tags:
+          - Key: stage
+            Value: ${self:custom.stage}
+          - Key: service
+            Value: frontend
+        DistributionConfig:
+          PriceClass: PriceClass_100
+          HttpVersion: http2
+          Comment: 
+            Ref: AWS::StackName
+          DefaultCacheBehavior:
+            TargetOriginId: S3-${self:custom.stage}-vaccinenotifier.org
+            ViewerProtocolPolicy: 'redirect-to-https'
+            DefaultTTL: 30
+            Compress: true
+            ForwardedValues:
+              QueryString: true
+              Headers: 
+                - '*'
+          Enabled: true
+          DefaultRootObject: index.html
+          ## Since the Single Page App is taking care of the routing we need to make sure every path is served with index.html
+          ## The only exception are files that actually exist e.h. app.js, reset.css
+          CustomErrorResponses:
+            - ErrorCode: 404
+              ResponseCode: 200
+              ErrorCachingMinTTL: 86400
+              ResponsePagePath: /index.html
+            - ErrorCode: 403
+              ResponseCode: 200
+              ErrorCachingMinTTL: 86400
+              ResponsePagePath: /index.html
+          Aliases:
+            - "${self:custom.domains.${self:custom.stage}}"
+          ViewerCertificate: 
+            SslSupportMethod: sni-only
+            AcmCertificateArn: arn:aws:acm:us-east-1:965433530356:certificate/afb6486d-7ae2-4e24-880f-a99c5a29f728
+            MinimumProtocolVersion: TLSv1.1_2016
+          Origins:
+            - Id: S3-${self:custom.stage}-vaccinenotifier.org
+              DomainName: ${self:custom.domains.${self:custom.stage}}.s3-website-us-west-2.amazonaws.com
+              CustomOriginConfig:
+                HTTPPort: '80'
+                HTTPSPort: '443'
+                OriginProtocolPolicy: http-only
+    WebsiteDNSName:
+        Type: AWS::Route53::RecordSetGroup
+        Properties:
+          HostedZoneName: 'vaccinenotifier.org.'
+          RecordSets:
+          - Name: ${self:custom.domains.${self:custom.stage}}
+            Type: A
+            AliasTarget:
+              HostedZoneId: ${self:custom.hostedZoneId}
+              DNSName: ${self:custom.cloudFrontDomainName}

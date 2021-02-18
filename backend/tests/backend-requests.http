@@ -1,0 +1,5 @@
+###
+POST https://www.walmart.com/pharmacy/v2/clinical-services/time-slots/[user id?]
+Content-Type: "application/json"
+
+{"startDate":"02172021","endDate":"02232021","imzStoreNumber":{"USStoreId":776}}

@@ -142,8 +142,12 @@ const getValidVaccineSites = async () => {
 // ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Handler
 
-exports.handler = async (event) => {
-    
+/**
+ * Get the pharmacies given a zipcode
+ * @param {Object} event 
+ */
+const checkPharmaciesByZipcodeHandler = async (event) => {
+  const thisEndPoint = "GET /notifier/v1/";
     let validStores = [];
     try {
         validStores = await getValidVaccineSites();
@@ -157,3 +161,7 @@ exports.handler = async (event) => {
     };
     return response;
 };
+
+module.exports = {
+
+}
