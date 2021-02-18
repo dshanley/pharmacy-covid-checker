@@ -1,0 +1,26 @@
+.form {
+  td:first-child {
+    white-space: nowrap;
+  }
+  
+  .validField {
+    border-radius: 1.5px;
+    border: 1.5px solid limegreen;
+    outline-color: limegreen;
+  }
+
+  .validMessage {
+    color: limegreen;
+  }
+
+  .invalidField {
+    border-radius: 1.5px;
+    border: 1.5px solid red;
+    outline-color: red;
+  }
+
+  .invalidMessage {
+    color: red;
+  }
+}
+
