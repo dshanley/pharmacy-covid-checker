@@ -1,5 +1,5 @@
 const requestApi = require('request-promise');
-const logger = require('../cc-logger').startLogging('rest-helper');
+const logger = require('./cc-logger').startLogging('rest-helper');
 
 module.exports.request = async (method, url, data, headers, json=true) => {
   logger.debug(`Making request ${url}`);

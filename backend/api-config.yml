@@ -1,0 +1,14 @@
+cors: 
+  origin: '*'
+  headers:
+    - Content-Type
+    - content-type
+    - X-Amz-Date
+    - Authorization
+    - authorization
+    - X-Identity
+    - x-identity
+    - X-Api-Key
+    - X-Amz-Security-Token
+    - X-Amz-User-Agent
+  allowCredentials: true

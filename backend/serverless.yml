@@ -19,11 +19,7 @@ provider:
     region: ${self:provider.region}
     serviceName: ${self:service}
     version: ${git:sha1}
-    apiServerUrl: "${self:custom.protocol.${self:custom.stage}, 'https://'}${self:custom.domains.${self:custom.stage}}"
     appFrontendUrl: "${self:custom.protocol.${self:custom.stage}, 'https://'}${self:custom.frontendBaseUrl.${self:custom.stage}}"
-    apiAuthUrl: "${self:provider.environment.apiServerUrl}${self:custom.apiAuthBaseUrl.${self:custom.stage}}"
-    apiUsersUrl: "${self:provider.environment.apiServerUrl}${self:custom.apiUsersBaseUrl.${self:custom.stage}}"
-    apiItemsUrl: "${self:provider.environment.apiServerUrl}${self:custom.apiItemsBaseUrl.${self:custom.stage}}"
     tablePharms: ${self:custom.stage}-pharms
     tableContacts: ${self:custom.stage}-contacts
     LOG_LEVEL: ${self:custom.log_level.${self:custom.stage}, info}
@@ -65,8 +61,8 @@ provider:
         - dynamodb:DeleteItem
         - dynamodb:BatchWriteItem
       Resource:
-        - !GetAtt connectionTable.Arn
-        - !Join [ "/", [ !GetAtt "connectionTable.Arn", "index", "idxGsiConnectionId"]]      
+        - !GetAtt pharmsTable.Arn
+        - !GetAtt contactsTable.Arn
   
     # S3
     - Effect: "Allow"
@@ -94,7 +90,6 @@ plugins:
   - serverless-dynamodb-local
   - serverless-offline
   - serverless-domain-manager
-  - serverless-add-api-key
   - serverless-plugin-git-variables
   - serverless-prune-plugin
 
@@ -134,13 +129,8 @@ custom:
     local: localhost
   frontendBaseUrl:
     prod: vaccinenotifier.org
-    dev: dev-vaccinenotifier.org
+    dev: dev.vaccinenotifier.org
     local: localhost:3000
-  apiItemsBaseUrl:
-    prod: /items/v1
-    staging: /items/v1
-    dev: /items/v1
-    local: :3003/items/v1
   debug_pct:
     prod: 0
     dev: 100
@@ -153,14 +143,19 @@ custom:
     automatic: true
     number: 5
   webpack:
-    webpackConfig: '../webpack.config.js'    
+    webpackConfig: './webpack.config.js'    
   # Using https://github.com/amplify-education/serverless-domain-manager#readme
   # https://github.com/pavel-ignatiev/serverless-domain-manager
   customDomain:
     domainName: ${self:custom.domains.${self:custom.stage}}
+    stage: ${self:custom.stage}
     basePath: 'notifier'
-    createRoute53Record: false
-    certificateName: '*.vaccinenotifier.org'     
+    createRoute53Record: true
+    certificateArn: arn:aws:acm:us-west-2:965433530356:certificate/3dbad5b0-3fdc-4c33-9ec3-f4845391879a
+    endpointType: 'regional'
+    securityPolicy: tls_1_2
+    apiType: rest
+    autoDomain: true
 
 # API
 functions:
@@ -173,7 +168,7 @@ functions:
           cors: true
   # Activity
   checkZipcode:
-    handler: src/pharms.checkPharmaciesByZipcodeHandler
+    handler: src/pharms.getPharmaciesByZipcodeHandler
     events:
       - http:
           path: /v1/pharmacies
@@ -182,15 +177,14 @@ functions:
             parameters:
               querystrings:
                 zipcode: true
-          cors: ${file(../api-config.yml):cors}
-          authorizer: ${file(../api-config.yml):authorizer}
+          cors: ${file(./api-config.yml):cors}
   
   # Scheduled Jobs
-  jobCheckAndNotifyContacts:
-    handler: src/jobs.checkAndNotifyContacts
-    events:
-      - schedule: rate(3 minutes)
-    timeout: 180 # seconds, longer timeout for processing
+  # jobCheckAndNotifyContacts:
+  #   handler: src/jobs.checkAndNotifyContacts
+  #   events:
+  #     - schedule: rate(3 minutes)
+  #   timeout: 180 # seconds, longer timeout for processing
   
 # CloudFormation resource templates here
 resources:
@@ -205,7 +199,7 @@ resources:
           - AttributeName: storeId
             AttributeType: S
           - AttributeName: isAvailable
-            AttributeType: BOOL
+            AttributeType: N
         KeySchema:
           - AttributeName: storeId
             KeyType: HASH
@@ -222,7 +216,7 @@ resources:
           - AttributeName: phoneMobile
             AttributeType: S
           - AttributeName: isEnabled
-            AttributeType: BOOL
+            AttributeType: N
         KeySchema:
           - AttributeName: phoneMobile
             KeyType: HASH
