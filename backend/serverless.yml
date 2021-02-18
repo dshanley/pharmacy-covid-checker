@@ -1,0 +1,721 @@
+service: activity-manager
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  region: us-west-2
+  timeout: 30 # in seconds
+  memorySize: 1024 # 1024 is the default, see https://hackernoon.com/lower-your-aws-lambda-bill-by-increasing-memory-size-yep-e591ae499692
+  logs:
+    restApi: true
+  deploymentBucket:
+    name: contentcamel.io.activity-manager.deployment-${self:custom.stage}  
+    # serverSideEncryption: AES256 
+  # Websockets
+  websocketsApiRouteSelectionExpression: $request.body.action
+  # Environment (process.env.)
+  environment:
+    # Standard and shared by all services
+    stage: ${self:custom.stage}
+    region: ${self:provider.region}
+    serviceName: ${self:service}
+    version: ${git:sha1}
+    apiKey: ${self:custom.apiKeySSM}
+    apiServerUrl: "${self:custom.protocol.${self:custom.stage}, 'https://'}${self:custom.domains.${self:custom.stage}}"
+    appFrontendUrl: "${self:custom.protocol.${self:custom.stage}, 'https://'}${self:custom.frontendBaseUrl.${self:custom.stage}}"
+    apiAuthUrl: "${self:provider.environment.apiServerUrl}${self:custom.apiAuthBaseUrl.${self:custom.stage}}"
+    apiUsersUrl: "${self:provider.environment.apiServerUrl}${self:custom.apiUsersBaseUrl.${self:custom.stage}}"
+    apiItemsUrl: "${self:provider.environment.apiServerUrl}${self:custom.apiItemsBaseUrl.${self:custom.stage}}"
+    tableTenants: ${self:custom.stage}-tenants
+    tableUsers: ${self:custom.stage}-users
+    tableItems: ${self:custom.stage}-items
+    tableArchivedItems: ${self:custom.stage}-items-archived
+    tableActivityFeed: ${self:custom.stage}-activity-feed
+    tableConnections: ${self:custom.stage}-connections
+    tableAccountMetrics: ${self:custom.stage}-metrics-account
+    tableUserMetrics: ${self:custom.stage}-metrics-users
+    tableUserShareMetrics: ${self:custom.stage}-metrics-user-shares
+    tableItemMetrics: ${self:custom.stage}-metrics-items
+    LOG_LEVEL: ${self:custom.log_level.${self:custom.stage}, info}
+    DEBUG_PCT: ${self:custom.debug_pct.${self:custom.stage}, 0}
+    # Service specific vars
+    bucketLogs: ${self:custom.stage}-logs-contentcamel-io
+    bucketMetrics: ${self:custom.stage}-metrics-contentcamel-io
+    emailConfigSet: ${self:custom.emailConfigSet.${self:custom.stage}}
+    # Defined as: apiSocketUrl: https://${self:custom.domainsSockets.${self:custom.stage}}/${self:custom.stage}
+    apiSocketUrl:
+      Fn::Join:
+        - ''
+        - - Ref: WebsocketsApi
+          - .execute-api.
+          - Ref: AWS::Region
+          - .amazonaws.com/
+          - ${self:custom.stage}
+
+  # IAM
+  iamRoleStatements:
+    - Effect: Allow 
+      Action: # logging permissions
+        - logs:CreateLogGroup
+        - logs:CreateLogStream
+        - logs:DescribeLogStreams
+        - logs:PutLogEvents
+        - logs:CreateSubscriptionFilter
+        - logs:PutSubscriptionFilter
+      Resource: 
+        - "arn:aws:logs:${opt:region, self:provider.region}:serverless:log-group:/aws/cognito/*"
+        - "arn:aws:logs:${opt:region, self:provider.region}:799934124850:log-group:/metrics/server-shortener-${self:custom.stage}:log-stream"
+        - "arn:aws:logs:${opt:region, self:provider.region}:799934124850:log-group:/metrics/trail-shortener-${self:custom.stage}:log-stream:*"
+    - Effect: Allow 
+      Action: # SES
+        - ses:SendEmail
+        - ses:SendRawEmail
+        - ses:SendTemplatedEmail
+        - ses:SendBulkTemplatedEmail
+      Resource: 
+        - "*"
+    
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:BatchWriteItem
+      Resource:
+        - !GetAtt connectionTable.Arn
+        - !Join [ "/", [ !GetAtt "connectionTable.Arn", "index", "idxGsiConnectionId"]]
+        - !Join [ "/", [ !GetAtt "connectionTable.Arn", "index", "idxGsiTenantId"]]
+        - !Join [ "/", [ !GetAtt "connectionTable.Arn", "index", "idxGsiUserId"]]
+        - !GetAtt activityFeedTable.Arn
+        - !Join [ "/", [ !GetAtt "activityFeedTable.Arn", "index", "idxGsiTenant"]]
+        - !ImportValue ItemsTableArn-${self:custom.stage}
+        - !Join [ "/", [ !ImportValue "ItemsTableArn-${self:custom.stage}", "index", "idxGsiTenant"]]
+        - !ImportValue UsersTableArn-${self:custom.stage}
+        - !Join [ "/", [ !ImportValue "UsersTableArn-${self:custom.stage}", "index", "idxGsiTenant"]]
+        - !ImportValue ArchivedItemsTableArn-${self:custom.stage}
+        - !Join [ "/", [ !ImportValue "ArchivedItemsTableArn-${self:custom.stage}", "index", "idxGsiTenant"]]
+        - !GetAtt accountMetricsTable.Arn
+        - !Join [ "/", [ !GetAtt "accountMetricsTable.Arn", "index", "idxGsiTenant"]]
+        - !GetAtt itemMetricsTable.Arn
+        - !Join [ "/", [ !GetAtt "itemMetricsTable.Arn", "index", "idxGsiTenant"]]
+        - !GetAtt userMetricsTable.Arn
+        - !Join [ "/", [ !GetAtt "userMetricsTable.Arn", "index", "idxGsiTenant"]]
+        - !GetAtt userShareMetricsTable.Arn
+        - !Join [ "/", [ !GetAtt "userShareMetricsTable.Arn", "index", "idxGsiTenant"]]
+        - !Join [ "/", [ !GetAtt "userShareMetricsTable.Arn", "index", "idxGsiShareKey"]]
+        - !Join [ "/", [ !GetAtt "userShareMetricsTable.Arn", "index", "idxGsiItemIdShareTo"]]
+        - !Join [ "/", [ !GetAtt "userShareMetricsTable.Arn", "index", "idxGsiSharedBy"]]
+        
+        
+    # Websockets
+    - Effect: Allow
+      Action:
+        - execute-api:ManageConnections
+        - execute-api:Invoke
+      Resource:
+        - "arn:aws:execute-api:${self:provider.region}:*:**/@connections/*"
+  
+    # S3
+    - Effect: "Allow"
+      Action:
+        - s3:*
+        # - s3:ListBucket
+        # - s3:PutObject
+        # - s3:GetObject
+        # - s3:PutObjectTagging
+        # - s3:GetObjectTagging
+        # - s3:GetBucketLocation
+        # - s3:ListBucketMultipartUploads
+        # - s3:ListMultipartUploadParts
+        # - s3:AbortMultipartUpload
+        # - s3:CreateBucket
+      Resource:
+        # - arn:aws:s3:::${self:provider.environment.bucketLogs}/*
+        # - arn:aws:s3:::${self:provider.environment.bucketMetrics}/*
+        # - arn:aws:s3:::aws-athena-query-results-*
+        - arn:aws:s3:::*
+    # Pinpoint
+    - Effect: "Allow"
+      Action:
+        - mobiletargeting:PutEvents
+        - mobiletargeting:UpdateEndpoint
+      Resource:
+        - arn:aws:mobiletargeting:us-east-1:799934124850:apps/*
+    # Athena
+    - Effect: "Allow"
+      Action:
+        - athena:*
+        # - athena:StartQueryExecution
+        # - athena:BatchGetQueryExecution
+        # - athena:CancelQueryExecution
+        # - athena:GetCatalogs
+        # - athena:GetExecutionEngine
+        # - athena:GetExecutionEngines
+        # - athena:GetNamespace
+        # - athena:GetNamespaces
+        # - athena:GetQueryExecution
+        # - athena:GetQueryExecutions
+        # - athena:GetQueryResults
+        # - athena:GetQueryResultsStream
+        # - athena:GetTable
+        # - athena:GetTables
+        # - athena:ListQueryExecutions
+        # - athena:RunQuery
+        # - athena:StartQueryExecution
+        # - athena:StopQueryExecution
+      Resource:
+        - arn:aws:athena:${self:provider.region}:799934124850:workgroup/*
+    - Effect: "Allow"
+      Action:
+        - glue:CreateDatabase
+        - glue:DeleteDatabase
+        - glue:GetDatabase
+        - glue:GetDatabases
+        - glue:UpdateDatabase
+        - glue:CreateTable
+        - glue:DeleteTable
+        - glue:BatchDeleteTable
+        - glue:UpdateTable
+        - glue:GetTable
+        - glue:GetTables
+        - glue:BatchCreatePartition
+        - glue:CreatePartition
+        - glue:DeletePartition
+        - glue:BatchDeletePartition
+        - glue:UpdatePartition
+        - glue:GetPartition
+        - glue:GetPartitions
+        - glue:BatchGetPartition
+      Resource:
+        - arn:aws:glue:us-west-2:799934124850:*
+
+plugins:
+  - serverless-deployment-bucket
+  - serverless-webpack
+  - serverless-dynamodb-local
+  - serverless-offline
+  - serverless-domain-manager
+  - serverless-add-api-key
+  - serverless-plugin-git-variables
+  - serverless-prune-plugin
+  - '@haftahave/serverless-ses-template'
+
+package:
+  exclude:
+  - coverage/**
+  - .circleci/**
+  - examples/**
+
+custom:
+  serverless-offline:
+    port: 3004
+  stage: ${opt:stage, self:provider.stage}
+  protocol: 
+    local: http://
+  # hostedZoneId: Z2FDTNDATAQYW2
+  cloudFrontDomainName:
+    Fn::GetAtt:
+      - CloudFrontDistribution
+      - DomainName
+  dynamodb:
+    stages:
+      - local
+    start:
+      port: 8080
+      inMemory: true
+      migrate: true
+      heapInitial: 100m
+      heapMax: 1g
+      noStart: true
+      seed: true
+      convertEmptyValues: true
+    migration:
+      dir: src/migrations
+  domains:
+    prod: api.contentcamel.io
+    staging: staging-api.contentcamel.io
+    dev: dev-api.contentcamel.io
+    local: localhost
+  domainsSockets:
+    prod: socket.contentcamel.io
+    staging: staging-socket.contentcamel.io
+    dev: dev-socket.contentcamel.io
+    local: dev-socket.contentcamel.io
+  frontendBaseUrl:
+    prod: app.contentcamel.io
+    staging: staging-app.contentcamel.io
+    dev: dev-app.contentcamel.io
+    local: localhost:3000
+  apiAuthBaseUrl:
+    prod: /auth/v1
+    staging: /auth/v1
+    dev: /auth/v1
+    local: :3001/auth/v1
+  apiUsersBaseUrl:
+    prod: /users/v1
+    staging: /users/v1
+    dev: /users/v1
+    local: :3002/users/v1
+  apiItemsBaseUrl:
+    prod: /items/v1
+    staging: /items/v1
+    dev: /items/v1
+    local: :3003/items/v1
+  emailConfigSet:
+    prod: prod-app-email-events
+    staging: prod-app-email-events
+    dev: dev-test
+    local: dev-test
+  debug_pct:
+    prod: 100
+    staging: 100
+    dev: 100
+    local: 100
+  log_level:
+    dev: 'debug'
+    prod: 'debug'
+    staging: 'debug'
+    local: 'debug'
+  prune:
+    automatic: true
+    number: 5
+  webpack:
+    webpackConfig: '../webpack.config.js'    
+  # Using https://github.com/amplify-education/serverless-domain-manager#readme
+  # https://github.com/pavel-ignatiev/serverless-domain-manager
+  customDomain:
+    domainName: ${self:custom.domains.${self:custom.stage}}
+    stage: "${self:custom.stage}"
+    basePath: 'activity'
+    createRoute53Record: false
+    certificateName: '*.contentcamel.io'
+    websockets:
+      domainName: ${self:custom.domainsSockets.${self:custom.stage}}
+      stage: "${self:custom.stage}"
+      createRoute53Record: true
+      certificateName: '*.contentcamel.io'
+  # API Keys (via plugin)
+  apiKeys:
+    - name: ${self:custom.stage}-ccServiceKey
+  # API Key in SSM
+  apiKeySSM: ${ssm:apikey-${self:custom.stage}~true}
+  # SES Email Templates
+  sesTemplatesAddStageAlias: false # Specifies whether to add stage and alias (if present) to template name (default false)
+  sesTemplatesConfigFile: './src/email-templates/templates.js' # Config file path (default './ses-email-templates/index.js')
+  sesTemplatesRegion: '${self:provider.region}'          
+
+# API
+functions:
+  authorize:
+    handler: lib/authorizer.authorizeRestHandler
+  authorizeSocket:
+    handler: lib/authorizer.authorizeSocketHandler
+  version:
+    handler: lib/version.getServiceVersionHandler
+    events:
+      - http:
+          path: /v1/version
+          method: get
+          cors: true
+  # Activity
+  logItemActivityStream:
+    handler: src/log-activity.logItemStreamActivityHandler
+    events:
+      - stream: 
+          type: dynamodb
+          batchSize: 1
+          enabled: true
+          arn: 
+            !ImportValue ItemsTableStreamArn-${self:custom.stage}
+  # Realtime websockets
+  websocketConnect:
+    handler: src/socket-connection.connectHandler
+    events:
+      - websocket:
+          route: $connect
+          authorizer: ${file(../api-config.yml):ws-authorizer}
+  websocketDisconnect:
+    handler: src/socket-connection.disconnectHandler
+    events:
+      - websocket:
+          route: $disconnect
+  websocketDefault:
+    handler: src/socket-connection.defaultHandler
+    events:
+      - websocket:
+          route: $default
+  websocketPing:
+    handler: src/socket-keepalive.pingPongHandler
+    events:
+      - websocket:
+          route: ping
+  websocketPong:
+    handler: src/socket-keepalive.pingPongHandler
+    events:
+      - websocket:
+          route: pong
+  websocketKeepAlive:
+    handler: src/socket-keepalive.keepaliveAllConnections
+    events:
+      - schedule: rate(5 minutes)
+  digestNotificationScheduler:
+    handler: src/digest-activity.sendDigestNotifications
+    events:
+      - schedule: cron(0 5 ? * MON *)
+  listActivities:
+    handler: src/list-activity.listActivityItemsHandler
+    events:
+      - http:
+          path: /v1/list
+          method: get
+          cors: ${file(../api-config.yml):cors}
+          authorizer: ${file(../api-config.yml):authorizer}
+  # Send Direct Email
+  sendDirectEmail:
+    handler: src/notification-activity.sendDirectNotificationHandler
+    events:
+      - http:
+          path: /v1/direct-notifications
+          method: post
+          cors: ${file(../api-config.yml):cors}
+          private: true
+  # Broadcast notifications
+  broadcastUpdatedItemsPrivate:
+    handler: src/log-activity.broadcastUpdatedItemsServiceHandler
+    events:
+      - http:
+          path: /v1/services/notify
+          method: post
+          cors: ${file(../api-config.yml):cors}
+          private: true
+  # Analytics Dashboard
+  analyticsDashboard:
+    handler: src/dashboard-metrics.analyticsDashboardHandler
+    events:
+      - http:
+          path: /v1/analytics/dashboard
+          method: get
+          request:
+            parameters:
+              querystrings:
+                datetimeStart: true
+                datetimeEnd: true
+          cors: ${file(../api-config.yml):cors}
+          authorizer: ${file(../api-config.yml):authorizer}
+  analyticsDatatable:
+    handler: src/dashboard-metrics.analyticsDatatableHandler
+    events:
+      - http:
+          path: /v1/analytics/datatable
+          method: get
+          cors: ${file(../api-config.yml):cors}
+          authorizer: ${file(../api-config.yml):authorizer}
+  
+  # Analytics Aggregate Jobs
+  analyticsRollupAccountMetrics:
+    handler: src/job-rollup-metric.rollupAccountMetricsHandler
+    events:
+      - schedule: rate(60 minutes)
+    timeout: 180 # seconds, longer timeout for processing
+  analyticsRollupUserMetrics:
+    handler: src/job-rollup-metric.rollupUserMetricsHandler
+    events:
+      - schedule: rate(60 minutes)
+    timeout: 180 # seconds, longer timeout for processing
+  analyticsRollupItemMetrics:
+    handler: src/job-rollup-metric.rollupItemMetricsHandler
+    events:
+      - schedule: rate(60 minutes)
+    timeout: 180 # seconds, longer timeout for processing
+  # Analytics Admin Endpoint
+  analyticsPutEventPrivate:
+    handler: src/log-event.putPinpointEventServiceHandler
+    events:
+      - http:
+          path: /v1/analytics
+          method: post
+          cors: ${file(../api-config.yml):cors}
+          private: true
+  # Analytics Admin Endpoint
+  adminAnalyticsRollupAllMetrics:
+    handler: src/job-rollup-metric.adminRollupAllMetricsHandler
+    events:
+      - http:
+          path: /v1/analytics/rollup-all
+          method: get
+          request:
+            parameters:
+              querystrings:
+                tenantId: true
+          cors: ${file(../api-config.yml):cors}
+          authorizer: ${file(../api-config.yml):authorizer}
+    timeout: 30 # seconds, longer timeout for processing
+  
+  # S3 Triggers for Analytics
+  # This puts views into cloudwatch and pinpoint
+  s3EventsHandler:
+    handler: src/log-event.s3ToCloudwatchEventsHandler
+    events:
+      - s3: 
+          bucket: ${self:custom.stage}-logs-contentcamel-io
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: trail-shortener/AWSLogs/799934124850/CloudTrail/us-west-2 #skip digests
+          existing: true
+    timeout: 90 # seconds, longer timeout for processing
+# CloudFormation resource templates here
+resources:
+  Resources:
+    # Tables
+    connectionTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:provider.environment.tableConnections}
+        AttributeDefinitions:
+          - AttributeName: tenantId
+            AttributeType: S
+          - AttributeName: connectionId
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: connectionId
+            KeyType: HASH
+          - AttributeName: tenantId
+            KeyType: RANGE
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+        BillingMode: PAY_PER_REQUEST
+        GlobalSecondaryIndexes:
+        - IndexName: idxGsiConnectionId
+          KeySchema:
+          - AttributeName: connectionId
+            KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: idxGsiTenantId
+          KeySchema:
+          - AttributeName: tenantId
+            KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: idxGsiUserId
+          KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+          - AttributeName: tenantId
+            KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+    activityFeedTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:provider.environment.tableActivityFeed}
+        AttributeDefinitions:
+          - AttributeName: timestampNano
+            AttributeType: N
+          - AttributeName: tenantId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: tenantId
+            KeyType: HASH
+          - AttributeName: timestampNano
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+    # Metrics Tables
+    accountMetricsTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:provider.environment.tableAccountMetrics}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: tenantId
+            AttributeType: S
+          - AttributeName: date
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+          - AttributeName: tenantId
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+        - IndexName: idxGsiTenant
+          KeySchema:
+          - AttributeName: tenantId
+            KeyType: HASH
+          - AttributeName: date
+            KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+    userMetricsTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:provider.environment.tableUserMetrics}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: tenantId
+            AttributeType: S
+          - AttributeName: date
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+          - AttributeName: tenantId
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+        - IndexName: idxGsiTenant
+          KeySchema:
+          - AttributeName: tenantId
+            KeyType: HASH
+          - AttributeName: date
+            KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+    # User Shares Metrics table
+    # Not a rollup but the active share recording
+    # id here is `itemId-shareId`
+    userShareMetricsTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:provider.environment.tableUserShareMetrics}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: tenantId
+            AttributeType: S
+          - AttributeName: date
+            AttributeType: S
+          - AttributeName: shareKey 
+            AttributeType: S
+          - AttributeName: shareId
+            AttributeType: S
+          - AttributeName: sharedTo
+            AttributeType: S
+          - AttributeName: sharedBy
+            AttributeType: S
+          - AttributeName: itemId
+            AttributeType: S
+        KeySchema:
+          # key here is "itemId-shareId"
+          - AttributeName: id 
+            KeyType: HASH
+          - AttributeName: tenantId
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+        - IndexName: idxGsiTenant
+          KeySchema:
+          - AttributeName: tenantId
+            KeyType: HASH
+          - AttributeName: date
+            KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: idxGsiShareKey
+          KeySchema:
+          - AttributeName: shareKey
+            KeyType: HASH
+          - AttributeName: date
+            KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: idxGsiItemIdShareTo
+          KeySchema:
+          - AttributeName: itemId
+            KeyType: HASH
+          - AttributeName: sharedTo
+            KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: idxGsiSharedBy
+          KeySchema:
+          - AttributeName: sharedBy
+            KeyType: HASH
+          - AttributeName: date
+            KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+    itemMetricsTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:provider.environment.tableItemMetrics}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: tenantId
+            AttributeType: S
+          - AttributeName: date
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+          - AttributeName: tenantId
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+        - IndexName: idxGsiTenant
+          KeySchema:
+          - AttributeName: tenantId
+            KeyType: HASH
+          - AttributeName: date
+            KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+    # Metrics bucket - used for Pinpoint
+    # commented out simply to remove duplicate bucket error in dev
+    MetricsS3Bucket:
+      Type: AWS::S3::Bucket
+      DeletionPolicy: Retain
+      Properties:
+        BucketName: ${self:provider.environment.bucketMetrics}
+        PublicAccessBlockConfiguration:
+            BlockPublicAcls : true
+            BlockPublicPolicy : true
+            IgnorePublicAcls : true
+            RestrictPublicBuckets : true
+
+    # # SSM for DDB Table ARN Export
+    # # This reduces dependencies (and cyclical dependencies)
+    UserSharesTableStreamSSM:
+      Type: "AWS::SSM::Parameter"
+      Properties:
+        Name: ${self:custom.stage}-userShareMetricsTable-arn
+        Value: !GetAtt userShareMetricsTable.Arn
+        Type: "String"
+        Description: "SSM Parameter for userShareMetricsTableArn-${self:custom.stage}"
+        Tags:
+          "stage": "${self:custom.stage}"
+
+    # CORS for 4xx and 5xx responses 
+    GatewayResponseDefault4XX:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: DEFAULT_4XX
+        RestApiId:
+          Ref: 'ApiGatewayRestApi'
+    GatewayResponseDefault5XX:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: DEFAULT_5XX
+        RestApiId:
+          Ref: 'ApiGatewayRestApi'
