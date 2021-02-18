@@ -1,4 +1,9 @@
 ###
+GET https://dev-api.vaccinenotifier.org/notifier/v1/version
+###
+GET https://dev-api.vaccinenotifier.org/notifier/v1/pharmacies?zipcode=48105
+
+###
 POST https://www.walmart.com/pharmacy/v2/clinical-services/time-slots/[user id?]
 Content-Type: "application/json"
 
