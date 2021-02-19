@@ -94,12 +94,14 @@ const subscribeToNotificationsByPharmacy = async (subscriptionInfo) => {
         const params = {
           TableName: process.env.tablePharms,
           Item: {
-            storeId: `${BRAND.RITEAID_STORE}-${store.storeId}`,
+            id: `${BRAND.RITEAID_STORE}-${store.storeId}`,
             isAvailable: 0,
+            storeId: store.storeId,
             address: store.address,
-            createAt: new Date().toISOString()
+            createAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
           },
-          ConditionExpression: 'attribute_not_exists(storeId)'
+          ConditionExpression: 'attribute_not_exists(id)'
         };
         storeIds.push(store.storeId);
         storeInserts.push(ddb.put(params).promise().catch( error => {
@@ -204,11 +206,8 @@ const subscribeToNotifications = async (event) => {
     logger.debug({ thisEndPoint, subscriptionInfo });
 
     let response = await subscribeToNotificationsByPharmacy(subscriptionInfo);
-    if (!response) {
-      // user already existed
-      response = { message: `Subscription already exists`};
-    }
-    return rest.response(200, response, thisEndPoint);
+    
+    return rest.response(200, "Success", thisEndPoint);
   } catch (error) {
     logger.error({ thisEndPoint, error: error.toString() });
     return rest.response(500, "Internal Server Error", thisEndPoint);

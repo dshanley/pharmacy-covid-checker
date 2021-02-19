@@ -204,12 +204,12 @@ resources:
       Properties:
         TableName: ${self:provider.environment.tablePharms}
         AttributeDefinitions:
-          - AttributeName: storeId
+          - AttributeName: id
             AttributeType: S
           - AttributeName: isAvailable
             AttributeType: N
         KeySchema:
-          - AttributeName: storeId
+          - AttributeName: id
             KeyType: HASH
           - AttributeName: isAvailable
             KeyType: RANGE

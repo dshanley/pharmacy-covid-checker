@@ -1,23 +1,31 @@
 ###
 GET https://dev-api.vaccinenotifier.org/notifier/v1/version
 ###
-GET https://dev-api.vaccinenotifier.org/notifier/v1/pharmacies?zipcode=48105
+GET https://dev-api.vaccinenotifier.org/notifier/v1/pharmacies?zipcode=48111
 ###
 POST https://dev-api.vaccinenotifier.org/notifier/v1/subscribe
 content-type: 'application/json'
 
 {
-   "phone":"503.896.7998",
+   "phone":"503.896.7999",
    "pharmacies":{
       "riteAid":[
          {
-            "storeId":"4530",
-            "address":"2781 Plymouth Road Ann Arbor 48105"
-         },
-         {
-            "storeId":"4519",
-            "address":"2980 Packard Street Ann Arbor 48108"
-         }
+          "storeId": "4332",
+          "address": "51341 W. Huron River Drive, Belleville 48111"
+          },
+          {
+            "storeId": "7824",
+            "address": "4151 S Canton Center Road, Canton 48188"
+          },
+          {
+            "storeId": "4363",
+            "address": "753 South Grove Street, Ypsilanti 48198"
+          },
+          {
+            "storeId": "4358",
+            "address": "35101 Michigan Avenue East, Wayne 48184"
+          }
       ]
    }
 }
