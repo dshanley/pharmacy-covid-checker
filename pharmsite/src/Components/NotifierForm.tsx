@@ -38,9 +38,11 @@ export type NotifierFormContextType = {
 export const NotifierFormContext = createContext<NotifierFormContextType>();
 
 // very simple regexp
-const ZIP_CODE_REG_EXP = /^[0-9]{5}$/;
+const ZIP_CODE_PATTERN = '[0-9]*';
+const ZIP_CODE_REG_EXP = /^[0-9]{5}$/; // GOTCHA: slightly different from pattern!
 const MAX_PHARMACIES = 3;
-const PHONE_NUMBER_REG_EXP = /^[0-9]{3}[0-9]{3}[0-9]{4}$/;
+const PHONE_NUMBER_PATTERN = '[0-9]{3}[0-9]{3}[0-9]{4}';
+const PHONE_NUMBER_REG_EXP = new RegExp(PHONE_NUMBER_PATTERN);
 
 const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
   const { zipCode, pharmacies } = useContext(NotifierFormContext);
@@ -105,7 +107,7 @@ const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
           className={zipCodeFieldClassName}
           name="zipCode"
           type="text"
-          pattern="\d*"
+          pattern={ZIP_CODE_PATTERN}
           inputMode="numeric"
           value={zipCode.value}
           onChange={(e) => zipCode.set(e.target.value)}
@@ -244,7 +246,11 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
           },
         },
       );
-      alert(`${res.status}: ${res.statusText}`);
+      if (res.status === 200) {
+        setIndex(index + 1);
+      } else {
+        throw new Error(`status: ${res.status} ${res.statusText}`);
+      }
     } catch (e) {
       alert(e);
     } finally {
@@ -268,7 +274,7 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
           className={mobileNumberFieldClassName}
           name="mobileNumber"
           type="tel"
-          pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"
+          pattern={PHONE_NUMBER_PATTERN}
           inputMode="numeric"
           value={mobileNumber.value}
           onChange={(e) => mobileNumber.set(e.target.value)}
@@ -302,10 +308,24 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
   );
 };
 
+const NotifierFormStepFour = () => {
+  const restart = () => {
+    window.location.reload();
+  };
+  return (
+    <div>
+      <h2>Success!</h2>
+      <p>Please check your text messages.</p>
+      <button onClick={restart}>Start Over</button>
+    </div>
+  );
+};
+
 const NotifierFormSteps = [
   NotifierFormStepOne,
   NotifierFormStepTwo,
   NotifierFormStepThree,
+  NotifierFormStepFour,
 ];
 
 export const NotifierForm = () => {
