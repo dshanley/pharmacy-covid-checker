@@ -1,6 +1,13 @@
 const requestApi = require('request-promise');
+const { error } = require('winston');
+const ddb = require('./utils/dynamodb');
 const logger = require('./utils/cc-logger').startLogging('pharms');
 const rest = require('./utils/rest');
+
+const BRAND = {
+  RITEAID_STORE: "riteaid"
+};
+
 
 // ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Check Sites
@@ -20,7 +27,7 @@ const getValidVaccineSites = async (zipcode) => {
     const storeIds = response.Data.stores.map(s => {
       return {
         storeId: s.storeNumber,
-        address: `${s.address} ${s.city} ${s.zipcode}`
+        address: `${s.address}, ${s.city} ${s.zipcode}`
       }
     });
     logger.debug({functionName, storeIds});
@@ -56,6 +63,110 @@ const getValidVaccineSites = async (zipcode) => {
 }
 
 // ///////////////////////////////////////////////////////////////////////////////////////////////////
+// Subscribe
+
+/**
+ * info of the form:
+ * {
+ *  phone,
+ *  pharmacies: {
+ *    riteAid: [ { storeId, address}, ... ]
+ *  }
+ * }
+ * @param {Object} subscriptionInfo 
+ */
+const subscribeToNotificationsByPharmacy = async (subscriptionInfo) => {
+  const functionName = "subscribeToNotificationsByPharmacy";
+
+  const { phone, pharmacies } = subscriptionInfo;
+  if (!phone || !pharmacies) {
+    throw new Error("phone and subscription info is required");
+  }
+
+  try {
+    // first save pharmacy as one we're checking
+    const {riteAid} = pharmacies;
+    logger.debug({functionName, subscriptionInfo});
+    if (riteAid && riteAid.length > 0) {
+      const storeIds = [];
+      const storeInserts = [];
+      for (store of riteAid) {
+        const params = {
+          TableName: process.env.tablePharms,
+          Item: {
+            storeId: `${BRAND.RITEAID_STORE}-${store.storeId}`,
+            isAvailable: 0,
+            address: store.address,
+            createAt: new Date().toISOString()
+          },
+          ConditionExpression: 'attribute_not_exists(storeId)'
+        };
+        storeIds.push(store.storeId);
+        storeInserts.push(ddb.put(params).promise().catch( error => {
+          if (error.code === 'ConditionalCheckFailedException') {
+            logger.info({functionName, info: "store has already been added"});
+          }
+          logger.error({functionName, error: error.toString()});
+        }));
+      }
+      // bookeeping for stores
+      const response = await Promise.all(storeInserts);
+      logger.debug({functionName, response, info: "added to stores"});
+     
+      // subscribe the user
+      const userInfo = {
+        phone,
+        riteAid: storeIds
+      }
+      logger.debug({functionName, userInfo});
+      const userResponse = await subscribeUserToStores(userInfo);
+      logger.debug({functionName, userResponse, info: "added user sub"});
+    }
+    
+
+
+  } catch (error) {
+    logger.error({functionName, subscriptionInfo, error: error.toString()});
+    throw new Error(error)
+  }
+}
+
+/**
+ * Subscribe the user to store vaccine notifications
+ * info of the format: 
+ * {
+ *  phone,
+ *  riteAid: [ 124, 456, 789 ]
+ * }
+ * @param {Object} userInfo 
+ */
+const subscribeUserToStores = async (userInfo) => {
+  const functionName = "subscribeUserToStores";
+  const { phone } = userInfo;
+  try {
+    const updateParams = {
+      TableName: process.env.tableContacts,
+      Key: {
+        phoneMobile: phone,
+        isEnabled: 1
+      },
+      UpdateExpression: "SET updatedAt = :updatedAt, riteAidStores = :riteAidStores",
+      ExpressionAttributeValues: {
+        ':updatedAt': new Date().toISOString(),
+        ':riteAidStores': ddb.createSet(userInfo.riteAid)
+      },
+      ReturnValues: "ALL_NEW"
+    }
+    const response = await ddb.update(updateParams).promise();
+    logger.debug({functionName, response});
+    return response;
+  } catch (error) {
+    logger.error({functionName, error: error.toString()});
+    throw new Error(error);
+  }
+}
+
+// ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Handler
 
 /**
@@ -69,12 +180,42 @@ const getPharmaciesByZipcodeHandler = async (event) => {
     logger.debug({ thisEndPoint, zipcode });
     validStores = await getValidVaccineSites(zipcode);
     return rest.response(200, validStores, thisEndPoint);
-  } catch (e) {
-    logger.error({ thisEndPoint, zipcode });
+  } catch (error) {
+    logger.error({ thisEndPoint, zipcode, error: error.toString() });
+    return rest.response(500, "Internal Server Error", thisEndPoint);
+  }
+};
+
+/**
+ * Subscribe to notifications when vaccine is available at given pharmacies
+ * payload of the format: 
+ * {
+ *  phone: xxx.xxx.xxx // assumed US format, no country code
+ *  pharmacies: {
+ *    riteAid: [ { storeId, address }, { storeId, address } ]
+ *  }
+ * }
+ * @param {Object} event 
+ */
+const subscribeToNotifications = async (event) => {
+  const thisEndPoint = "POST /notifier/v1/subscribe";
+  try {
+    const subscriptionInfo = JSON.parse(event.body);
+    logger.debug({ thisEndPoint, subscriptionInfo });
+
+    let response = await subscribeToNotificationsByPharmacy(subscriptionInfo);
+    if (!response) {
+      // user already existed
+      response = { message: `Subscription already exists`};
+    }
+    return rest.response(200, response, thisEndPoint);
+  } catch (error) {
+    logger.error({ thisEndPoint, error: error.toString() });
     return rest.response(500, "Internal Server Error", thisEndPoint);
   }
 };
 
 module.exports = {
   getPharmaciesByZipcodeHandler,
+  subscribeToNotifications
 }

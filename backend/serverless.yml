@@ -2,7 +2,7 @@ service: pharm-backend
 
 provider:
   name: aws
-  runtime: nodejs12.x
+  runtime: nodejs14.x
   region: us-west-2
   timeout: 30 # in seconds
   memorySize: 1024 # 1024 is the default, see https://hackernoon.com/lower-your-aws-lambda-bill-by-increasing-memory-size-yep-e591ae499692
@@ -166,7 +166,7 @@ functions:
           path: /v1/version
           method: get
           cors: true
-  # Activity
+  # Pharmacies
   checkZipcode:
     handler: src/pharms.getPharmaciesByZipcodeHandler
     events:
@@ -177,6 +177,14 @@ functions:
             parameters:
               querystrings:
                 zipcode: true
+          cors: ${file(./api-config.yml):cors}
+  # User subscriptions
+  subscribeUser:
+    handler: src/pharms.subscribeToNotifications
+    events:
+      - http:
+          path: /v1/subscribe
+          method: post
           cors: ${file(./api-config.yml):cors}
   
   # Scheduled Jobs

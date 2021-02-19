@@ -2,6 +2,25 @@
 GET https://dev-api.vaccinenotifier.org/notifier/v1/version
 ###
 GET https://dev-api.vaccinenotifier.org/notifier/v1/pharmacies?zipcode=48105
+###
+POST https://dev-api.vaccinenotifier.org/notifier/v1/subscribe
+content-type: 'application/json'
+
+{
+   "phone":"503.896.7998",
+   "pharmacies":{
+      "riteAid":[
+         {
+            "storeId":"4530",
+            "address":"2781 Plymouth Road Ann Arbor 48105"
+         },
+         {
+            "storeId":"4519",
+            "address":"2980 Packard Street Ann Arbor 48108"
+         }
+      ]
+   }
+}
 
 ###
 POST https://www.walmart.com/pharmacy/v2/clinical-services/time-slots/[user id?]
