@@ -12,3 +12,20 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+@media only screen 
+and (min-device-width: 320px) 
+and (max-device-width: 480px)
+and (-webkit-min-device-pixel-ratio: 2)  { 
+  input[type="text"], input[type="tel"] {
+    width: 150px;
+    font-size: 1.25em;
+  }
+
+  input[type="submit"], button {
+    height: 50px;
+    font-size: 1.25em;
+    border-radius: 0;
+    background-color: #EEE;
+  }
+}

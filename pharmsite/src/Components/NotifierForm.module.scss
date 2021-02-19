@@ -1,3 +1,28 @@
+ol.storeList {
+  padding-left: 0;
+
+  li {
+    list-style-type: none;
+    border: 1px solid #CCC;
+    padding: 15px;
+
+    &:not(:last-child) {
+      border-bottom: none;
+    }
+
+    label {
+      > span {
+        // GOTCHA: padding again !!!
+        padding: 15px;
+
+        &.disabled {
+          opacity: .5;
+        }
+      }
+    }
+  }
+}
+
 .form {
   td:first-child {
     white-space: nowrap;
