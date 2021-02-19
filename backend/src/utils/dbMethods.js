@@ -106,6 +106,46 @@ const queryByParams = async (dbParams, allResults = []) => {
   }
 }
 
+/**
+ * Query DDB by the params given. Paginates over the results to return the full set of results.
+ * @param {Object} dbParams { TableName }
+ * @param {Array} results optional and used for recursion
+ */
+const getAllRecords = async (dbParams, allResults = []) => {
+  const functionName = "getAllRecords";
+  logger.debug({functionName, dbParams, resultsCount: allResults.length});
+
+	if (!dbParams) {
+		logger.error({functionName, error: "dbParams is required"});
+		throw new Error("dbParams is required when calling getAllRecords");
+	}
+
+  try {
+    const [error, results] = await to(dynamodb.scan(dbParams).promise());
+    if (error) {
+      logger.error({functionName, dbParams, error: error.toString()});
+      throw new Error(error);
+    }
+    logger.debug({functionName, dbParams, resultsSize: results.length});
+    if (results && results.Items.length > 0) {
+      allResults = [...allResults, ...results.Items];
+
+      // we have to paginate
+      if (results.LastEvaluatedKey) {
+        logger.debug({functionName, dbParams, lastEvaluatedKey: results.LastEvaluatedKey, info: "paginating results"});
+        dbParams.ExclusiveStartKey = results.LastEvaluatedKey;
+        return await scan(dbParams, allResults);
+      } 
+      
+      return allResults;
+    }
+    return false;
+  } catch (error) {
+    logger.error({functionName, dbParams, error: error.toString()});
+    throw new Error(error);
+  }
+}
+
 
 
 
@@ -282,6 +322,7 @@ const buildUpdateStatementFromObject = (json) => {
 module.exports = {
 	getByParams,
 	queryByParams,
+	getAllRecords,
 	createNew,
 	deleteItem,
 	convertDdbToJson,

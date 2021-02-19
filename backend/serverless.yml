@@ -22,6 +22,7 @@ provider:
     appFrontendUrl: "${self:custom.protocol.${self:custom.stage}, 'https://'}${self:custom.frontendBaseUrl.${self:custom.stage}}"
     tablePharms: ${self:custom.stage}-pharms
     tableContacts: ${self:custom.stage}-contacts
+    tableSubscriptions: ${self:custom.stage}-subscriptions
     LOG_LEVEL: ${self:custom.log_level.${self:custom.stage}, info}
     DEBUG_PCT: ${self:custom.debug_pct.${self:custom.stage}, 0}
     # Service specific vars
@@ -63,6 +64,7 @@ provider:
       Resource:
         - !GetAtt pharmsTable.Arn
         - !GetAtt contactsTable.Arn
+        - !GetAtt subscriptionsTable.Arn
   
     # S3
     - Effect: "Allow"
@@ -230,6 +232,30 @@ resources:
             KeyType: HASH
           - AttributeName: isEnabled
             KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+
+    subscriptionsTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:provider.environment.tableSubscriptions}
+        AttributeDefinitions:
+          - AttributeName: storeKey
+            AttributeType: S
+          - AttributeName: phoneMobile
+            AttributeType: S
+        KeySchema:
+          - AttributeName: storeKey
+            KeyType: HASH
+          - AttributeName: phoneMobile
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+        - IndexName: idxGsiPhone
+          KeySchema:
+          - AttributeName: phoneMobile
+            KeyType: HASH
+          Projection:
+            ProjectionType: ALL
         BillingMode: PAY_PER_REQUEST
 
     # CORS for 4xx and 5xx responses 
