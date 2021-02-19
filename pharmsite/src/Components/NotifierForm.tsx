@@ -1,7 +1,8 @@
-import { createContext, useState, useContext } from 'react';
+import { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { Wizard, WizardStep } from './Wizard';
 import styles from './NotifierForm.module.scss';
 import axios from 'axios';
+import Inputmask from 'inputmask';
 
 export type CompanyName = 'RiteAid' | 'Walmart';
 
@@ -37,16 +38,24 @@ export type NotifierFormContextType = {
 // @ts-ignore: Expects a default value
 export const NotifierFormContext = createContext<NotifierFormContextType>();
 
+const ZIP_CODE_MASK = new Inputmask('99999');
+const PHONE_NUMBER_MASK = new Inputmask('999-999-9999');
+
 // very simple regexp
-const ZIP_CODE_PATTERN = '[0-9]*';
 const ZIP_CODE_REG_EXP = /^[0-9]{5}$/; // GOTCHA: slightly different from pattern!
-const MAX_PHARMACIES = 3;
-const PHONE_NUMBER_PATTERN = '[0-9]{3}[0-9]{3}[0-9]{4}';
-const PHONE_NUMBER_REG_EXP = new RegExp(PHONE_NUMBER_PATTERN);
+// const MAX_PHARMACIES = 100; // NOTE: Uncomment to enable maximum # of pharmacies
+const PHONE_NUMBER_REG_EXP = /^[0-9]{3}-[0-9]{3}-[0-9]{4}$/;
 
 const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
   const { zipCode, pharmacies } = useContext(NotifierFormContext);
   const [submitting, setSubmitting] = useState(false);
+
+  const inputEl = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (inputEl.current) {
+      ZIP_CODE_MASK.mask(inputEl.current);
+    }
+  }, []);
 
   const zipCodeValid = ZIP_CODE_REG_EXP.test(zipCode.value);
 
@@ -75,12 +84,22 @@ const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
           `Unexpected JSON data structure: ${JSON.stringify(res.data)}`,
         );
       }
-      pharmacies.setOptions(
-        res.data.data.pharmacies.riteAid.map((p: Pharmacy) => ({
+
+      if (res.data.data.pharmacies.riteAid.length === 0) {
+        throw new Error(
+          `No pharmacies found in ${zipCode.value}. Please try a different zip code.`,
+        );
+      }
+
+      const nextOptions: Pharmacy[] = res.data.data.pharmacies.riteAid.map(
+        (p: Pharmacy) => ({
           ...p,
           companyName: 'RiteAid',
-        })),
+        }),
       );
+
+      pharmacies.set([]);
+      pharmacies.setOptions(nextOptions);
       setIndex(index + 1);
     } catch (e) {
       alert(e);
@@ -104,10 +123,10 @@ const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
         className={styles.form}
       >
         <input
+          ref={inputEl}
           className={zipCodeFieldClassName}
           name="zipCode"
           type="text"
-          pattern={ZIP_CODE_PATTERN}
           inputMode="numeric"
           value={zipCode.value}
           onChange={(e) => zipCode.set(e.target.value)}
@@ -135,7 +154,8 @@ const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
         <br />
         <br />
         <div>
-          <input type="submit" value="Next" disabled={submitting} />
+          <input type="submit" value="Next" disabled={submitting} />{' '}
+          {submitting ? 'Loading...' : null}
         </div>
       </form>
     </div>
@@ -143,16 +163,17 @@ const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
 };
 
 const NotifierFormStepTwo: WizardStep = ({ index, setIndex }) => {
-  const { pharmacies, zipCode } = useContext(NotifierFormContext);
+  const { pharmacies } = useContext(NotifierFormContext);
   const pharmaciesValidMin = pharmacies.value.length > 0;
-  const pharmaciesValidMax = pharmacies.value.length <= MAX_PHARMACIES;
+  // // NOTE: Uncomment to enable maximum # of pharmacies
+  // const pharmaciesValidMax = pharmacies.value.length <= MAX_PHARMACIES;
   const back = () => {
-    pharmacies.set([]);
-    pharmacies.setOptions([]);
     setIndex(index - 1);
   };
   const next = () => {
-    if (pharmaciesValidMin && pharmaciesValidMax) {
+    // // NOTE: Uncomment to enable maximum # of pharmacies
+    // if (pharmaciesValidMin && pharmaciesValidMax) {
+    if (pharmaciesValidMin) {
       setIndex(index + 1);
     } else {
       alert('Please select at least one store');
@@ -161,52 +182,45 @@ const NotifierFormStepTwo: WizardStep = ({ index, setIndex }) => {
   return (
     <div>
       <h2>Step {index + 1}: Pharmacies</h2>
-      {pharmacies.options.length > 0 ? (
-        <div>
-          <p>
-            Select up to {MAX_PHARMACIES} stores for which you would like to
-            receive vaccine availability notifications.
-          </p>
-          <ol className={styles.storeList}>
-            {pharmacies.options.map((option) => {
-              const checked = pharmacies.value.includes(option.storeId);
-              const disabled =
-                !checked && pharmacies.value.length >= MAX_PHARMACIES;
-              return (
-                <li>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={disabled}
-                      onChange={(e) =>
-                        e.target.checked
-                          ? pharmacies.set(
-                              pharmacies.value.concat([option.storeId]),
-                            )
-                          : pharmacies.set(
-                              pharmacies.value.filter(
-                                (p) => p !== option.storeId,
-                              ),
-                            )
-                      }
-                    />{' '}
-                    <span className={disabled ? styles.disabled : undefined}>
-                      RiteAid at {option.address}
-                    </span>
-                  </label>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      ) : (
-        <div>
-          No pharmacies found in {zipCode.value}.<br />
-          <br />
-          Please try a different zip code.
-        </div>
-      )}
+      <div>
+        <p>
+          Select the stores for which you would like to receive vaccine
+          availability notifications.
+        </p>
+        <ol className={styles.storeList}>
+          {pharmacies.options.map((option) => {
+            const checked = pharmacies.value.includes(option.storeId);
+            // // NOTE: Uncomment to enable maximum # of pharmacies
+            // const disabled = !checked && pharmacies.value.length >= MAX_PHARMACIES;
+            const disabled = false;
+            return (
+              <li>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={disabled}
+                    onChange={(e) =>
+                      e.target.checked
+                        ? pharmacies.set(
+                            pharmacies.value.concat([option.storeId]),
+                          )
+                        : pharmacies.set(
+                            pharmacies.value.filter(
+                              (p) => p !== option.storeId,
+                            ),
+                          )
+                    }
+                  />{' '}
+                  <span className={disabled ? styles.disabled : undefined}>
+                    RiteAid at {option.address}
+                  </span>
+                </label>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
       <br />
       <button onClick={back}>Back</button> <button onClick={next}>Next</button>
     </div>
@@ -217,6 +231,14 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
   const { mobileNumber, pharmacies } = useContext(NotifierFormContext);
   const [submitting, setSubmitting] = useState(false);
   const mobileNumberValid = PHONE_NUMBER_REG_EXP.test(mobileNumber.value);
+
+  const inputEl = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (inputEl.current) {
+      PHONE_NUMBER_MASK.mask(inputEl.current);
+    }
+  }, []);
+
   const mobileNumberFieldClassName = mobileNumberValid
     ? styles.validField
     : mobileNumber.touched
@@ -271,15 +293,16 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
         className={styles.form}
       >
         <input
+          ref={inputEl}
           className={mobileNumberFieldClassName}
-          name="mobileNumber"
+          name="mobile"
           type="tel"
-          pattern={PHONE_NUMBER_PATTERN}
+          autoComplete="tel-national"
           inputMode="numeric"
           value={mobileNumber.value}
           onChange={(e) => mobileNumber.set(e.target.value)}
           onBlur={mobileNumber.setTouched.bind(null, true)}
-          placeholder="5039783245"
+          placeholder="503-978-3245"
           onKeyDown={(e) => {
             if (e.code === 'Enter') {
               mobileNumber.setTouched(true);
@@ -294,15 +317,18 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
             '✘ ' +
             (mobileNumber.value.length === 0
               ? 'Cannot be blank'
-              : 'Malformed phone number')
+              : 'Invalid phone number')
           ) : (
             <>&nbsp;</>
           )}
         </span>
         <br />
         <br />
-        <button onClick={back}>Back</button>{' '}
-        <input type="submit" value="Subscribe" disabled={submitting} />
+        <button type="button" onClick={back}>
+          Back
+        </button>{' '}
+        <input type="submit" value="Subscribe" disabled={submitting} />{' '}
+        {submitting ? 'Loading...' : null}
       </form>
     </div>
   );
@@ -314,7 +340,7 @@ const NotifierFormStepFour = () => {
   };
   return (
     <div>
-      <h2>Success!</h2>
+      <h2>Success</h2>
       <p>Please check your text messages.</p>
       <button onClick={restart}>Start Over</button>
     </div>
