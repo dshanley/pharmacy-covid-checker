@@ -23,6 +23,7 @@ provider:
     tablePharms: ${self:custom.stage}-pharms
     tableContacts: ${self:custom.stage}-contacts
     tableSubscriptions: ${self:custom.stage}-subscriptions
+    snsTopicArnString: arn:aws:sns:${opt:region, self:provider.region}:965433530356
     LOG_LEVEL: ${self:custom.log_level.${self:custom.stage}, info}
     DEBUG_PCT: ${self:custom.debug_pct.${self:custom.stage}, 0}
     # Service specific vars
@@ -65,7 +66,13 @@ provider:
         - !GetAtt pharmsTable.Arn
         - !GetAtt contactsTable.Arn
         - !GetAtt subscriptionsTable.Arn
-  
+    
+    # SNS SMS
+    - Effect: "Allow"
+      Action:
+        - "sns:*"
+      Resource: "*"
+    
     # S3
     - Effect: "Allow"
       Action:
@@ -190,11 +197,11 @@ functions:
           cors: ${file(./api-config.yml):cors}
   
   # Scheduled Jobs
-  # jobCheckAndNotifyContacts:
-  #   handler: src/jobs.checkAndNotifyContacts
-  #   events:
-  #     - schedule: rate(3 minutes)
-  #   timeout: 180 # seconds, longer timeout for processing
+  jobCheckForVaccineSlots:
+    handler: src/jobs.checkForVaccineSlots
+    events:
+      - schedule: rate(3 minutes)
+    timeout: 300 # seconds, longer timeout for processing
   
 # CloudFormation resource templates here
 resources:
@@ -208,13 +215,22 @@ resources:
         AttributeDefinitions:
           - AttributeName: id
             AttributeType: S
-          - AttributeName: isAvailable
-            AttributeType: N
+          # - AttributeName: isAvailable
+          #   AttributeType: N
+          # - AttributeName: storeType
+          #   AttributeType: S
         KeySchema:
           - AttributeName: id
             KeyType: HASH
-          - AttributeName: isAvailable
-            KeyType: RANGE
+          # - AttributeName: isAvailable
+          #   KeyType: RANGE
+        # GlobalSecondaryIndexes:
+        # - IndexName: idxGsiAvailableByType
+        #   KeySchema:
+        #   - AttributeName: isAvailable
+        #     KeyType: HASH
+        #   Projection:
+        #     ProjectionType: ALL
         BillingMode: PAY_PER_REQUEST
         
     contactsTable:
@@ -225,13 +241,9 @@ resources:
         AttributeDefinitions:
           - AttributeName: phoneMobile
             AttributeType: S
-          - AttributeName: isEnabled
-            AttributeType: N
         KeySchema:
           - AttributeName: phoneMobile
             KeyType: HASH
-          - AttributeName: isEnabled
-            KeyType: RANGE
         BillingMode: PAY_PER_REQUEST
 
     subscriptionsTable:

@@ -1,11 +1,12 @@
 const requestApi = require('request-promise');
 const ddb = require('./utils/dynamodb');
+const utils = require('./utils/dbMethods');
 const logger = require('./utils/cc-logger').startLogging('pharms');
 const rest = require('./utils/rest');
+const subscriptions = require('./subscriptions');
+const constants = require('./constants');
 
-const BRAND = {
-  RITEAID_STORE: "riteaid"
-};
+
 
 
 // ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -68,17 +69,21 @@ const subscribeToNotificationsByPharmacy = async (subscriptionInfo) => {
     if (riteAid && riteAid.length > 0) {
       const storeIds = [];
       const storeInserts = [];
+      const createTopics = [];
       for (const store of riteAid) {
+        const storeRecord = {
+          id: `${constants.BRAND.RITEAID_STORE}-${store.storeId}`,
+          isAvailable: 0,
+          storeId: store.storeId,
+          address: store.address,
+          storeType: constants.BRAND.RITEAID_STORE,
+          createAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
         const params = {
           TableName: process.env.tablePharms,
           Item: {
-            id: `${BRAND.RITEAID_STORE}-${store.storeId}`,
-            isAvailable: 0,
-            storeId: store.storeId,
-            address: store.address,
-            storeType: BRAND.RITEAID_STORE,
-            createAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            ...storeRecord
           },
           ConditionExpression: 'attribute_not_exists(id)'
         };
@@ -86,21 +91,24 @@ const subscribeToNotificationsByPharmacy = async (subscriptionInfo) => {
         storeInserts.push(ddb.put(params).promise().catch( error => {
           if (error.code === 'ConditionalCheckFailedException') {
             logger.info({functionName, info: "store has already been added"});
+            return;
           }
           logger.error({functionName, error: error.toString()});
         }));
+        // create SNS SMS topic
+        createTopics.push(subscriptions.createTopicForPharmacy(storeRecord));
       }
-      // bookeeping for stores
+      // do the inserts
       const response = await Promise.all(storeInserts);
-      logger.debug({functionName, response, info: "added to stores"});
+      await Promise.all(createTopics);
      
       // subscribe the user for notifications
       const userInfo = {
         phone,
         riteAid: storeIds
       }
-      logger.debug({functionName, userInfo});
-      const userResponse = await subscribeUserToStores(userInfo);
+      
+      const userResponse = await subscribePersonToPharmacies(userInfo);
       logger.debug({functionName, userResponse, info: "added user sub"});
     }
     
@@ -121,21 +129,39 @@ const subscribeToNotificationsByPharmacy = async (subscriptionInfo) => {
  * }
  * @param {Object} userInfo 
  */
-const subscribeUserToStores = async (userInfo) => {
-  const functionName = "subscribeUserToStores";
+const subscribePersonToPharmacies = async (userInfo) => {
+  const functionName = "subscribePersonToPharmacies";
   const { phone, riteAid } = userInfo;
+
+  if (!riteAid || riteAid.length === 0) {
+    logger.error({functionName, userResponse, error: "riteAid expected"});
+    throw new Error("Set of stores expected");
+  }
+
   try {
-    // create contact for the user
+    // subscribe the user to sms alerts
+    // we do this first to update contact record with Arns
+    const smsSubscriptions = riteAid.map( storeId => {
+      return subscriptions.subscribePersonToPharmacy(phone, `${constants.BRAND.RITEAID_STORE}-${storeId}`).catch( error => {
+        logger.error({functionName, error: error.toString()});
+      });
+    });
+    let subscriptionArns = await Promise.all(smsSubscriptions);
+    subscriptionArns = utils.clean(subscriptionArns);
+    logger.debug({functionName, subscriptionArns});
+
+    // then, create contact for the user
     const updateParams = {
       TableName: process.env.tableContacts,
       Key: {
         phoneMobile: phone,
-        isEnabled: 1
       },
-      UpdateExpression: "SET updatedAt = :updatedAt, riteAidStores = :riteAidStores",
+      UpdateExpression: "SET updatedAt = :updatedAt, riteAidStores = :riteAidStores, subscriptionArns = :subscriptionArns, isEnabled = :isEnabled",
       ExpressionAttributeValues: {
         ':updatedAt': new Date().toISOString(),
-        ':riteAidStores': ddb.createSet(userInfo.riteAid)
+        ':riteAidStores': ddb.createSet(userInfo.riteAid),
+        ':subscriptionArns': ddb.createSet(subscriptionArns),
+        ':isEnabled': 1
       },
       ReturnValues: "ALL_NEW"
     }
@@ -149,7 +175,7 @@ const subscribeUserToStores = async (userInfo) => {
       const subParams = {
         TableName: process.env.tableSubscriptions,
         Key: {
-          storeKey: `${BRAND.RITEAID_STORE}-${storeId}`,
+          storeKey: `${constants.BRAND.RITEAID_STORE}-${storeId}`,
           phoneMobile: phone
         },
         UpdateExpression: "SET updatedAt = :updatedAt",
@@ -213,7 +239,8 @@ const subscribeToNotifications = async (event) => {
   try {
     const subscriptionInfo = JSON.parse(event.body);
     logger.debug({ thisEndPoint, subscriptionInfo });
-
+    // SNS SMS wants country code
+    subscriptionInfo.phone = `+1${subscriptionInfo.phone}`;
     let response = await subscribeToNotificationsByPharmacy(subscriptionInfo);
     
     return rest.response(200, "Success", thisEndPoint);

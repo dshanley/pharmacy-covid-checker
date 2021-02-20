@@ -1,7 +1,7 @@
 ###
 GET https://dev-api.vaccinenotifier.org/notifier/v1/version
 ###
-GET https://dev-api.vaccinenotifier.org/notifier/v1/pharmacies?zipcode=48111
+GET https://dev-api.vaccinenotifier.org/notifier/v1/pharmacies?zipcode=41805
 ###
 POST https://dev-api.vaccinenotifier.org/notifier/v1/subscribe
 content-type: 'application/json'

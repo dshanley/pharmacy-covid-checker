@@ -3,6 +3,7 @@
 /* eslint-disable no-param-reassign */
 const AWS = require('aws-sdk');
 const to = require('await-to-js').default;
+const cleanDeep = require('clean-deep');
 const dynamodb = require('./dynamodb');
 const logger = require('./cc-logger').startLogging('dbmethod-helper');
 
@@ -147,7 +148,17 @@ const getAllRecords = async (dbParams, allResults = []) => {
 }
 
 
+// /////////////////////////////////////////////////
+// Utils
 
+/**
+ * Deep clean an object -- ready for saving in DynamoDB
+ * https://github.com/nunofgs/clean-deep
+ * @param {Object} theObject The object to clean up removing nulls, emtpy arrays, empty object, empty strings, and undefineds
+ */
+const clean = (theObject) => {
+  return cleanDeep(theObject);
+} 
 
 
 // /////////////////////////////////////////////////
@@ -328,5 +339,6 @@ module.exports = {
 	convertDdbToJson,
 	convertJsonToDdb,
 	buildUpdateStatementFromObject,
-	deleteBatch
+	deleteBatch,
+	clean
 };
