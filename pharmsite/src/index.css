@@ -1,35 +1,180 @@
 @import-normalize;
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-               'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-               sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  
+  background: #FBFCFD;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
+.container {
+  margin: 0 auto 0;
+  max-width: 1170px;
+  width: 100%;
+}
+
+.container * {
+  box-sizing: border-box;
+}
+
+.row:before, .row:after {
+  clear: both;
+  content: "";
+  display: table;
+}
+
+[class^="col-"] {
+  float: left;
+  min-height: 1px;
+  padding: 8px 12px;
+  width: 8.333333%;
+}
+
+/* http://j4n.co/blog/Creating-your-own-css-grid-system */
+.col-1  { width: 8.333333%;   }
+.col-2  { width: 16.666666%;  }
+.col-3  { width: 25%;         }
+.col-4  { width: 33.333333%;  }
+.col-5  { width: 41.666666%;  }
+.col-6  { width: 50%;         }
+.col-7  { width: 58.333333%;  }
+.col-8  { width: 66.666666%;  }
+.col-9  { width: 75%;         }
+.col-10 { width: 83.333333%;  }
+.col-11 { width: 91.666666%;  }
+.col-12 { width: 100%;        }
+
+.col-push-1 { margin-left: 8.333333%;  }
+.col-push-2 { margin-left: 16.666666%; }
+.col-push-3 { margin-left: 25%;        }
+
+h1 {
+  
+}
+
+h3 {
+  font-weight: normal;
+}
+
+.center {
+  text-align: center;
+}
+
+.App-header {
+  margin-top: 50px;
+  text-align: center;
+}
+
+.logo img {
+  height: 80px;
+}
+
+
 input[type="text"], input[type="tel"] {
-  border: 2px solid #AAA;
+  border: 1px solid #DEDEDE;
+  border-radius: 3px;
+  font-size: 16px;
+  line-height: 28px;
+  padding: 4px 8px;
+}
+
+.input-center {
+  text-align: center;
+}
+
+.storeAddress {
+  padding-left: 24px;
+}
+
+.btn {
+  background: #3050FE;
+  border: thin solid #3050FE;
+  border-radius: 6px;
+  color: white;
+  display: inline-block;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 36px;
+  margin-right: 4px;
+  margin-bottom: 8px;
+  min-width: 100px;
+  padding: 0 8px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.btn:hover {
+  background: #1935C9;
+  border-color: #1935C9 ;
+  cursor: pointer;
+}
+
+.btn:active, .btn:focus {
+  border-radius: 6px;
+}
+
+.btn-ghost {
+  background: #EAEEF9;
+  border: thin solid #EAEEF9;
+  border-radius: 6px;
+  color: #594D7A;
+  display: inline-block;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 36px;
+  margin-right: 4px;
+  margin-bottom: 8px;
+  min-width: 100px;
+  padding: 0 8px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.btn-ghost:hover {
+  background: #D5DEEA;
+  border-color: #D5DEEA ;
+  cursor: pointer;
+}
+
+.btn-ghost:active, .btn-ghost:focus {
+  border-radius: 6px;
 }
 
 @media only screen 
 and (min-device-width: 320px) 
 and (max-device-width: 480px)
 and (-webkit-min-device-pixel-ratio: 2)  { 
+  
+  .App-header {
+    margin-top: 20px;
+    text-align: center;
+  }
+  
+  .col-1  { width: 100%;  }
+  .col-2  { width: 100%;  }
+  .col-3  { width: 100%;  }
+  .col-4  { width: 100%;  }
+  .col-5  { width: 100%;  }
+  .col-6  { width: 100%;  }
+  .col-7  { width: 100%;  }
+  .col-8  { width: 100%;  }
+  .col-9  { width: 100%;  }
+  .col-10 { width: 100%;  }
+  .col-11 { width: 100%;  }
+  .col-12 { width: 100%;  }
+
+  .col-push-1 { margin-left: 0; }
+  .col-push-2 { margin-left: 0; }
+  .col-push-3 { margin-left: 0; }
+  
   input[type="text"], input[type="tel"] {
-    width: 140px;
+    width: 80%%;
     font-size: 1.25em;
   }
 
-  input[type="submit"], button {
-    height: 50px;
-    font-size: 1.25em;
-    border-radius: 0;
-    background-color: #EEE;
-  }
 }

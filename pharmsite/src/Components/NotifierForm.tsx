@@ -138,23 +138,11 @@ const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
             }
           }}
         />
-        <span className={zipCodeMessageClassName}>
-          {' '}
-          {zipCodeValid ? (
-            '✓ Valid'
-          ) : zipCode.touched ? (
-            '✘ ' +
-            (zipCode.value.length === 0
-              ? 'Cannot be blank'
-              : 'Malformed zip code')
-          ) : (
-            <>&nbsp;</>
-          )}
-        </span>
         <br />
         <br />
         <div>
-          <input type="submit" value="Next" disabled={submitting} />{' '}
+          <input type="submit" className="btn" value="Next" disabled={submitting} />{' '}
+          <br />
           {submitting ? 'Loading...' : null}
         </div>
       </form>
@@ -212,9 +200,13 @@ const NotifierFormStepTwo: WizardStep = ({ index, setIndex }) => {
                           )
                     }
                   />{' '}
-                  <span className={disabled ? styles.disabled : undefined}>
-                    RiteAid at {option.address}
-                  </span>
+                  <div className="storeAddress">
+                    <span className={disabled ? styles.disabled : undefined}>
+                      <strong>RiteAid</strong>
+                      <br/>
+                      {option.address}
+                    </span>
+                  </div>
                 </label>
               </li>
             );
@@ -222,7 +214,7 @@ const NotifierFormStepTwo: WizardStep = ({ index, setIndex }) => {
         </ol>
       </div>
       <br />
-      <button onClick={back}>Back</button> <button onClick={next}>Next</button>
+      <button className="btn-ghost" onClick={back}>Back</button> <button className="btn" onClick={next}>Next</button>
     </div>
   );
 };
@@ -281,7 +273,10 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
   };
   return (
     <div>
-      <h2>Step {index + 1}: Mobile #</h2>
+      <h2>Step {index + 1}: Mobile number</h2>
+        <p>
+          Enter a valid number that can receive text messages.
+        </p>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -309,10 +304,11 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
             }
           }}
         />
+        <br />
         <span className={mobileNumberMessageClassName}>
           {' '}
           {mobileNumberValid ? (
-            '✓ Valid'
+            '✓ Valid phone number'
           ) : mobileNumber.touched ? (
             '✘ ' +
             (mobileNumber.value.length === 0
@@ -324,10 +320,11 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
         </span>
         <br />
         <br />
-        <button type="button" onClick={back}>
+        <button type="button" className="btn-ghost" onClick={back}>
           Back
         </button>{' '}
-        <input type="submit" value="Subscribe" disabled={submitting} />{' '}
+        <input type="submit" className="btn" value="Subscribe" disabled={submitting} />{' '}
+        <br />
         {submitting ? 'Loading...' : null}
       </form>
     </div>
@@ -342,7 +339,7 @@ const NotifierFormStepFour = () => {
     <div>
       <h2>Success</h2>
       <p>Please check your text messages.</p>
-      <button onClick={restart}>Start Over</button>
+      <button className="btn" onClick={restart}>Start Over</button>
     </div>
   );
 };
