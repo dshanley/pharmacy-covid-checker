@@ -3,8 +3,9 @@ ol.storeList {
 
   li {
     list-style-type: none;
-    border: 1px solid #CCC;
-    padding: 15px;
+    border: 2px solid #CCC;
+    padding: 12px;
+    max-width: 600px;
 
     &:not(:last-child) {
       border-bottom: none;
@@ -30,7 +31,7 @@ ol.storeList {
   
   .validField {
     border-radius: 1.5px;
-    border: 1.5px solid limegreen;
+    border: 2px solid limegreen;
     outline-color: limegreen;
   }
 
@@ -40,7 +41,7 @@ ol.storeList {
 
   .invalidField {
     border-radius: 1.5px;
-    border: 1.5px solid red;
+    border: 2px solid red;
     outline-color: red;
   }
 

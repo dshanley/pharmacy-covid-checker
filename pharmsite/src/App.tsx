@@ -7,13 +7,16 @@ const App = () => {
       <header className="App-header">
         <h1>Vaccine Notifier</h1>
         <h3>
-          Text alerts when COVID-19 vaccines become available at your local
+          Get text alerts when COVID-19 vaccines become available at your local
           pharmacy.
         </h3>
       </header>
       <main role="main">
         <NotifierForm />
       </main>
+      <footer>
+        <br />
+      </footer>
     </div>
   );
 };
