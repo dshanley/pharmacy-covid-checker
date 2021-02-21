@@ -30,7 +30,9 @@ const App = () => {
           </div>
         </main>
     
-        
+        <div className="center">
+          <img src="city.png" alt="Vaccine Notifier" className="city"/>
+        </div>
       </div>
     
       <section className="info-block">

@@ -90,10 +90,15 @@ p {
 
 }
 
+.city {
+  margin-top: 50px;
+  width: 600px;
+}
+
 .info-block {
   background: #D3DFFF;
   color: #24486E;
-  margin-top: 60px;
+  margin-top: -13px;
   padding: 16px 0 32px;
 }
 
@@ -221,7 +226,13 @@ and (-webkit-min-device-pixel-ratio: 2)  {
     margin: .5em 0;
   }
   
+  .city {
+    width: 100%;
+  }
   
+  .info-block {
+    margin-top: -10px;
+  }
   
   .col-1  { width: 100%;  }
   .col-2  { width: 100%;  }
