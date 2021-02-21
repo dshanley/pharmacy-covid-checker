@@ -110,8 +110,7 @@ const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
 
   return (
     <div>
-      <h2>Step {index + 1}: Zip Code</h2>
-      <p>Please enter your home zip code.</p>
+      <h2>Enter your ZIP code to get started</h2>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -141,7 +140,7 @@ const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
         <br />
         <br />
         <div>
-          <input type="submit" className="btn" value="Next" disabled={submitting} />{' '}
+          <input type="submit" className="btn" value="Find pharmacies" disabled={submitting} />{' '}
           <br />
           {submitting ? 'Loading...' : null}
         </div>
@@ -169,7 +168,7 @@ const NotifierFormStepTwo: WizardStep = ({ index, setIndex }) => {
   };
   return (
     <div>
-      <h2>Step {index + 1}: Pharmacies</h2>
+      <h2>Pharmacies near you</h2>
       <div>
         <p>
           Select the stores for which you would like to receive vaccine
@@ -273,9 +272,9 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
   };
   return (
     <div>
-      <h2>Step {index + 1}: Mobile number</h2>
+      <h2>Enter your mobile number</h2>
         <p>
-          Enter a valid number that can receive text messages.
+          You will receive a text message confirming your subscription.
         </p>
       <form
         onSubmit={(e) => {

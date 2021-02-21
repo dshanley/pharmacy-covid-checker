@@ -6,6 +6,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   
   background: #FBFCFD;
+  margin: 0;
+  padding: 0;
 }
 
 code {
@@ -57,8 +59,27 @@ h1 {
   
 }
 
+.logo {
+  margin: 40px 0;
+  text-align: center;
+}
+
+.logo img {
+  height: 100px;
+}
+
 h3 {
+  font-size: 1.8em;
   font-weight: normal;
+  margin: 0.67em 0;
+}
+
+h4 {
+  font-size: 1.2em;
+}
+
+p {
+  line-height: 1.8;
 }
 
 .center {
@@ -66,12 +87,25 @@ h3 {
 }
 
 .App-header {
-  margin-top: 50px;
-  text-align: center;
+
 }
 
-.logo img {
-  height: 80px;
+.info-block {
+  background: #D3DFFF;
+  color: #24486E;
+  margin-top: 60px;
+  padding: 16px 0 32px;
+}
+
+.info-block a,
+.info-block a:visited {
+  color: #3050FE;
+  font-weight: bold;
+}
+
+.info-block a:hover {
+  color: #3050FE;
+  text-decoration: none;
 }
 
 
@@ -103,7 +137,7 @@ input[type="text"], input[type="tel"] {
   margin-right: 4px;
   margin-bottom: 8px;
   min-width: 100px;
-  padding: 0 8px;
+  padding: 0 16px;
   text-align: center;
   text-decoration: none;
 }
@@ -145,13 +179,23 @@ input[type="text"], input[type="tel"] {
   border-radius: 6px;
 }
 
+footer {
+  margin: 100px 0 50px;
+}
+
+footer .container [class^="col-"] {
+  border-top: thin solid #ddd;
+  color: #594D7A;
+  font-size: .75em;
+  padding: 50px 12px;
+}
+
 @media only screen 
 and (max-width: 480px)
 and (-webkit-min-device-pixel-ratio: 2)  { 
   
-  .App-header {
-    margin-top: 20px;
-    text-align: center;
+  .logo {
+    margin: 20px 0;
   }
   
   .logo img {
@@ -167,11 +211,13 @@ and (-webkit-min-device-pixel-ratio: 2)  {
     margin: .5em 0;
   }
   h3 {
-    font-size: 1em;
+    font-size: 1.1em;
+    line-height: 1.5;
     margin: .5em 0;
   }
   p {
-    font-size: .8em;
+    font-size: 1em;
+    line-height: 1.5;
     margin: .5em 0;
   }
   
@@ -195,8 +241,9 @@ and (-webkit-min-device-pixel-ratio: 2)  {
   .col-push-3 { margin-left: 0; }
   
   input[type="text"], input[type="tel"] {
-    width: 80%%;
+    width: 60%;
     font-size: 1.25em;
+    margin-top: 10px;
   }
 
 }
