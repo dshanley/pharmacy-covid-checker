@@ -1,20 +1,29 @@
 ol.storeList {
   padding-left: 0;
-
   li {
     list-style-type: none;
-    border: 2px solid #CCC;
-    padding: 12px;
-    max-width: 600px;
-
+    border: 2px solid #DEDEDE;
+    line-height: 1.3;
+    text-align: left;
+    &:first-child {
+      border-radius: 6px 6px 0 0;
+    }
+    &:last-child {
+      border-radius: 0 0 6px 6px;
+    }
     &:not(:last-child) {
       border-bottom: none;
     }
 
     label {
+      padding: 15px;
+      display: block;
+
+      input {
+        float: left;
+        margin-top: 4px;
+      }
       > span {
-        // GOTCHA: padding again !!!
-        padding: 15px;
 
         &.disabled {
           opacity: .5;
@@ -30,7 +39,7 @@ ol.storeList {
   }
   
   .validField {
-    border-radius: 1.5px;
+    border-radius: 3px;
     border: 2px solid limegreen;
     outline-color: limegreen;
   }
@@ -40,7 +49,7 @@ ol.storeList {
   }
 
   .invalidField {
-    border-radius: 1.5px;
+    border-radius: 3px;
     border: 2px solid red;
     outline-color: red;
   }
@@ -50,3 +59,16 @@ ol.storeList {
   }
 }
 
+@media only screen 
+and (max-width: 480px)
+and (-webkit-min-device-pixel-ratio: 2)  { 
+ 
+  ol.storeList {
+    li {
+      label {
+        padding: 12px;
+      }
+    }
+  }
+  
+}
