@@ -146,14 +146,36 @@ input[type="text"], input[type="tel"] {
 }
 
 @media only screen 
-and (min-device-width: 320px) 
-and (max-device-width: 480px)
+and (max-width: 480px)
 and (-webkit-min-device-pixel-ratio: 2)  { 
   
   .App-header {
     margin-top: 20px;
     text-align: center;
   }
+  
+  .logo img {
+    height: 50px;
+  }
+  
+  h1 {
+    font-size: 1.4em;
+    top: 0;
+  }
+  h2 {
+    font-size: 1.2em;
+    margin: .5em 0;
+  }
+  h3 {
+    font-size: 1em;
+    margin: .5em 0;
+  }
+  p {
+    font-size: .8em;
+    margin: .5em 0;
+  }
+  
+  
   
   .col-1  { width: 100%;  }
   .col-2  { width: 100%;  }
