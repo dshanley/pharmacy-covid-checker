@@ -87,7 +87,7 @@ resources:
             - "${self:custom.domains.${self:custom.stage}}"
           ViewerCertificate: 
             SslSupportMethod: sni-only
-            AcmCertificateArn: arn:aws:acm:us-east-1:965433530356:certificate/afb6486d-7ae2-4e24-880f-a99c5a29f728
+            AcmCertificateArn: arn:aws:acm:us-east-1:965433530356:certificate/f5fa7bd7-4e01-4f54-b56f-375cf6e9ca8d
             MinimumProtocolVersion: TLSv1.1_2016
           Origins:
             - Id: S3-${self:custom.stage}-vaccinenotifier.org

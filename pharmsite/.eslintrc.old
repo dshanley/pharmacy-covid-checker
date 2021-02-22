@@ -1,0 +1,82 @@
+{
+  "env": {
+    "es6": true,
+    "node": true,
+    "jest": true
+  },
+  "extends": [
+    "airbnb-base",
+    "prettier",
+    "eslint:recommended",
+    "plugin:import/errors",
+    "plugin:import/warnings",
+    "plugin:import/typescript"
+  ],
+  "globals": {
+    "afterAll": true,
+    "afterEach": true,
+    "beforeAll": true,
+    "beforeEach": true,
+    "describe": true,
+    "expect": true,
+    "fit": true,
+    "it": true,
+    "jasmine": true,
+    "xit": true,
+    "jest": true
+  },
+  "settings": {
+    "plugins": [
+      "import"
+    ],
+    "rules": {
+      "import/newline-after-import": ["warning", { "count": 1 }],
+      "import/no-unresolved": "error",
+      "func-names": [
+        "error",
+        "as-needed"
+      ],
+      "indent": [
+        "error",
+        "tab"
+      ],
+      // disallow certain syntax forms
+      // http://eslint.org/docs/rules/no-restricted-syntax
+      "no-restricted-syntax": [
+        "error",
+        "ForInStatement",
+        "LabeledStatement",
+        "WithStatement"
+      ],
+      "no-use-before-define": ["off", { "functions": false }],
+      "linebreak-style": [
+          "error",
+          "unix"
+      ],
+      "quotes": [
+          "error",
+          "single"
+      ],
+      "semi": [
+          "error",
+          "always"
+      ],
+      "no-console": [
+          "error",
+          { "allow": [
+                  "info",
+                  "error"
+              ]
+          }
+      ],
+      "no-tabs": 0
+    },
+    "import/resolver": {
+      "typescript": {},
+      "node": {
+        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+      }
+    }
+  }
+}
+

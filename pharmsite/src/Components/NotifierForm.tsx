@@ -75,7 +75,7 @@ const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
     try {
       setSubmitting(true);
       const res = await axios(
-        `https://dev-api.vaccinenotifier.org/notifier/v1/pharmacies?zipcode=${zipCode.value}`,
+        `${process.env.REACT_APP_SERVER_URL}/notifier/v1/pharmacies?zipcode=${zipCode.value}`,
       );
       // TODO: Don't assume companyName is always RiteAid, don't assume store is
       // in 'data' key.
@@ -250,7 +250,7 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
     try {
       setSubmitting(true);
       const res = await axios.post(
-        'https://dev-api.vaccinenotifier.org/notifier/v1/subscribe',
+        `${process.env.REACT_APP_SERVER_URL}/notifier/v1/subscribe`,
         {
           phone: mobileNumber.value,
           pharmacies: {
@@ -297,7 +297,6 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
           value={mobileNumber.value}
           onChange={(e) => mobileNumber.set(e.target.value)}
           onBlur={mobileNumber.setTouched.bind(null, true)}
-          placeholder="503-978-3245"
           onKeyDown={(e) => {
             if (e.code === 'Enter') {
               mobileNumber.setTouched(true);
@@ -338,7 +337,11 @@ const NotifierFormStepFour = () => {
   return (
     <div>
       <h2>Success</h2>
-      <p>Please check your text messages.</p>
+      <ul>
+        <li>You'll get a text message now to confirm you're subscribed.</li>
+        <li>We'll notify you when vaccine becomes available at a store.</li>
+        <li>Follow the link to qualify and register your spot.</li>
+      </ul>
       <button className="btn" onClick={restart}>Start Over</button>
     </div>
   );

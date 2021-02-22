@@ -1,6 +1,7 @@
 const requestApi = require('request-promise');
 const ddb = require('./utils/dynamodb');
 const dbUtils = require('./utils/dbMethods');
+const subscriptions = require('./subscriptions');
 const rest = require('./utils/rest');
 const constants = require('./constants');
 const logger = require('./utils/cc-logger').startLogging('jobs');
@@ -20,7 +21,11 @@ const pollForVaccineSlots = async () => {
     // check riteaid stores
     const storeChecks = stores.map( store => {
       const storeUrl = `${constants.RITE_AID_CHECK_URL}${store.storeId}`
-      return rest.request("GET", storeUrl).then( result => {
+      const headers = {
+        "referrer": "https://www.riteaid.com/pharmacy/apt-scheduler",
+        "authority": "www.riteaid.com"
+      }
+      return rest.request("GET", null, headers, storeUrl).then( result => {
         if (result && result.Status === "SUCCESS") {
           if (result.Data && result.Data.slots) {
             const validSite = Object.values(result.Data.slots).includes(true);
@@ -41,8 +46,9 @@ const pollForVaccineSlots = async () => {
     logger.debug({functionName, stores, storeCheckResults});
 
     // update state
-    const storesNowAvailable = await updatePharmState(allStores, storeCheckResults);
-    
+    const storesNowAvailable = await updatePharmState(stores, storeCheckResults);
+    return storesNowAvailable;
+
   } catch (error) {
     logger.error({functionName, error: error.toString()});
     throw new Error(error);
@@ -151,7 +157,11 @@ const checkForVaccineSlots = async (event) => {
   
   try {
     
-    validStores = await pollForVaccineSlots();
+    // check
+    const validStores = await pollForVaccineSlots();
+    // alert
+    await subscriptions.alertAllToAvailabilityAtPharmacies(validStores);
+
     const response = {
       pharmacies: {
         ...validStores

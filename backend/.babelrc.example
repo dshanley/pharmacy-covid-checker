@@ -1,0 +1,7 @@
+{
+  "plugins": ["@babel/source-map-support", "@babel/transform-runtime"],
+  "presets": [
+    ["env", { "node": "14" }],
+    "stage-3"
+  ]
+}

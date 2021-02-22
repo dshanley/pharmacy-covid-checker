@@ -1,7 +1,8 @@
+### DEV
 ###
 GET https://dev-api.vaccinenotifier.org/notifier/v1/version
 ###
-GET https://dev-api.vaccinenotifier.org/notifier/v1/pharmacies?zipcode=41805
+GET https://dev-api.vaccinenotifier.org/notifier/v1/pharmacies?zipcode=48105
 ###
 POST https://dev-api.vaccinenotifier.org/notifier/v1/subscribe
 content-type: 'application/json'
@@ -35,3 +36,8 @@ POST https://www.walmart.com/pharmacy/v2/clinical-services/time-slots/[user id?]
 Content-Type: "application/json"
 
 {"startDate":"02172021","endDate":"02232021","imzStoreNumber":{"USStoreId":776}}
+
+### PROD
+###
+GET https://api.vaccinenotifier.org/notifier/v1/version
+###
