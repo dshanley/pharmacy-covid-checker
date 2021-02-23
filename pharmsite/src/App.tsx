@@ -57,7 +57,7 @@ const App = () => {
         <div className="container">
           <div className="row">
             <div className="col-10 col-push-1">
-              Made in Portland
+              Made in Portland 🌲
             </div>
           </div>
         </div>

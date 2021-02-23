@@ -258,3 +258,8 @@ and (-webkit-min-device-pixel-ratio: 2)  {
   }
 
 }
+
+ul.nobullet, li.nobullet {
+  list-style-type: none;
+  padding-left: 0;
+}

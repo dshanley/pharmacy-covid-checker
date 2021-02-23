@@ -46,6 +46,8 @@ const ZIP_CODE_REG_EXP = /^[0-9]{5}$/; // GOTCHA: slightly different from patter
 // const MAX_PHARMACIES = 100; // NOTE: Uncomment to enable maximum # of pharmacies
 const PHONE_NUMBER_REG_EXP = /^[0-9]{3}-[0-9]{3}-[0-9]{4}$/;
 
+const LOADING_STRING = 'Loading...';
+
 const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
   const { zipCode, pharmacies } = useContext(NotifierFormContext);
   const [submitting, setSubmitting] = useState(false);
@@ -75,7 +77,7 @@ const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
     try {
       setSubmitting(true);
       const res = await axios(
-        `https://dev-api.vaccinenotifier.org/notifier/v1/pharmacies?zipcode=${zipCode.value}`,
+        `${process.env.REACT_APP_SERVER_URL}/notifier/v1/pharmacies?zipcode=${zipCode.value}`,
       );
       // TODO: Don't assume companyName is always RiteAid, don't assume store is
       // in 'data' key.
@@ -140,9 +142,12 @@ const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
         <br />
         <br />
         <div>
-          <input type="submit" className="btn" value="Find pharmacies" disabled={submitting} />{' '}
-          <br />
-          {submitting ? 'Loading...' : null}
+          <input
+            type="submit"
+            className="btn"
+            value={submitting ? LOADING_STRING : 'Find pharmacies'}
+            disabled={submitting}
+          />
         </div>
       </form>
     </div>
@@ -202,7 +207,7 @@ const NotifierFormStepTwo: WizardStep = ({ index, setIndex }) => {
                   <div className="storeAddress">
                     <span className={disabled ? styles.disabled : undefined}>
                       <strong>RiteAid</strong>
-                      <br/>
+                      <br />
                       {option.address}
                     </span>
                   </div>
@@ -213,7 +218,12 @@ const NotifierFormStepTwo: WizardStep = ({ index, setIndex }) => {
         </ol>
       </div>
       <br />
-      <button className="btn-ghost" onClick={back}>Back</button> <button className="btn" onClick={next}>Next</button>
+      <button className="btn-ghost" onClick={back}>
+        Back
+      </button>{' '}
+      <button className="btn" onClick={next}>
+        Next
+      </button>
     </div>
   );
 };
@@ -249,7 +259,7 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
     try {
       setSubmitting(true);
       const res = await axios.post(
-        'https://dev-api.vaccinenotifier.org/notifier/v1/subscribe',
+        `${process.env.REACT_APP_SERVER_URL}/notifier/v1/subscribe`,
         {
           phone: mobileNumber.value,
           pharmacies: {
@@ -296,7 +306,6 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
           value={mobileNumber.value}
           onChange={(e) => mobileNumber.set(e.target.value)}
           onBlur={mobileNumber.setTouched.bind(null, true)}
-          placeholder="503-978-3245"
           onKeyDown={(e) => {
             if (e.code === 'Enter') {
               mobileNumber.setTouched(true);
@@ -322,9 +331,12 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
         <button type="button" className="btn-ghost" onClick={back}>
           Back
         </button>{' '}
-        <input type="submit" className="btn" value="Subscribe" disabled={submitting} />{' '}
-        <br />
-        {submitting ? 'Loading...' : null}
+        <input
+          type="submit"
+          className="btn"
+          value={submitting ? LOADING_STRING : 'Subscribe'}
+          disabled={submitting}
+        />
       </form>
     </div>
   );
@@ -337,8 +349,14 @@ const NotifierFormStepFour = () => {
   return (
     <div>
       <h2>Success</h2>
-      <p>Please check your text messages.</p>
-      <button className="btn" onClick={restart}>Start Over</button>
+      <ul className="nobullet">
+        <li>You'll get a text message now to confirm you're subscribed.</li>
+        <li>We'll notify you when vaccine becomes available at a store.</li>
+        <li>Follow the link to qualify and register your spot.</li>
+      </ul>
+      <button className="btn" onClick={restart}>
+        Start Over
+      </button>
     </div>
   );
 };

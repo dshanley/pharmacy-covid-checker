@@ -1,6 +1,7 @@
 const AWS = require('aws-sdk');
 // const requestApi = require('request-promise');
 // const ddb = require('./utils/dynamodb');
+const to = require('await-to-js').default;
 const logger = require('./utils/cc-logger').startLogging('pharms');
 const rest = require('./utils/rest');
 const constants = require('./constants');
@@ -22,7 +23,7 @@ const createTopicForPharmacy = async (store) => {
 
   try {
     const params = {
-      "Name": store.id,
+      "Name": `${process.env.stage}-${store.id}`,
       "Attributes": {
         "DisplayName": "VaccineNotifier.org",
       },
@@ -62,7 +63,9 @@ const subscribePersonToPharmacy = async (phoneMobile, storeKey) => {
   }
 
   try {
-    const snsTopicArn = `${process.env.snsTopicArnString}:${storeKey}`;
+    // SNS needs composite key to identify stage
+    const subscriptionKey = `${process.env.stage}-${storeKey}`;
+    const snsTopicArn = `${process.env.snsTopicArnString}:${subscriptionKey}`;
     const params = {
       Protocol: SNS_PROTOCOL_SMS,
       TopicArn: snsTopicArn,
@@ -75,8 +78,7 @@ const subscribePersonToPharmacy = async (phoneMobile, storeKey) => {
 
     // update the contact record with the subscription data
     if (response && response.SubscriptionArn) {
-      
-      return response.SubscriptionArn;
+      return {subscriptionArn: response.SubscriptionArn, subscriptionKey};
     }
 
     return false;
@@ -92,17 +94,25 @@ const subscribePersonToPharmacy = async (phoneMobile, storeKey) => {
 const alertAllToAvailabilityAtPharmacies = async (storesNowAvailable) => {
   const functionName = "alertAllToAvailabilityAtPharmacies";
 
+  if (!storesNowAvailable && storesNowAvailable.length === 0) {
+    logger.debug({functionName, storesNowAvailable});
+    return false;
+  }
+
   try {
     const smsBroadcasts = [];
     
     for (const store of storesNowAvailable) {
-      const params = {
-        Message: `Availability at RiteAid ${store.storeId}: ${store.address}`,
-        TopicArn: `${process.env.snsTopicArnString}:${store.id}`
-      };
-      smsBroadcasts.push(snsClient.publish(params).promise().catch( error => {
-        logger.error({functionName, store, error: error.toString()});
-      }));
+      if (store) {
+        const params = {
+          Message: `Availability at RiteAid ${store.storeId}: ${store.address}. ${constants.BRAND.RITEAID_URL}`,
+          TopicArn: `${process.env.snsTopicArnString}:${process.env.stage}-${store.id}`
+        };
+        logger.info({functionName, store, params});
+        smsBroadcasts.push(snsClient.publish(params).promise().catch( error => {
+          logger.error({functionName, store, error: error.toString()});
+        }));
+      }
     }
     const response = await Promise.all(smsBroadcasts);
     logger.debug({functionName, response});
@@ -113,8 +123,89 @@ const alertAllToAvailabilityAtPharmacies = async (storesNowAvailable) => {
   }
 }
 
+/**
+ * Update the user with their SMS subscription state
+ * @param {String} phoneMobile 
+ * @param {BOOL} subscribe 
+ */
+const alertSubscriptionState = async (phoneMobile, subscribe = true) => {
+  const functionName = "alertSubscriptionState";
+
+  try {
+    const message = subscribe === true ? "We'll notify you when pharmacies have availability." : "You are unsubscribed and will not receive notifications."
+    const params = {
+      Message: `${constants.SUBSCRIPTION.DISPLAY_NAME}> ${message}`,
+      PhoneNumber: phoneMobile
+    };
+    await to(snsClient.publish(params).promise());
+  } catch (error) {
+    logger.error({functionName, phoneMobile, error: error.toString()});
+    throw new Error(error);
+  }
+}
+
+// ///////////////////////////////////////////////////////////////////////////////////////////////////
+// Utils
+
+const adminDeleteAllTopics = async () => {
+  const functionName = "adminDeleteAllTopics";
+
+  try {
+    let response = await snsClient.listTopics().promise();
+    logger.debug({functionName, response});
+    if (response && response.Topics) {
+      const topicDeletions = []
+      for (const topic of response.Topics) {
+        const params = {
+          "TopicArn": topic.TopicArn
+        };
+        if (topic.TopicArn.includes(constants.BRAND.RITEAID_STORE)) {
+          topicDeletions.push(snsClient.deleteTopic(params).promise().catch(error => {
+            logger.error({functionName, topic, error: error.toString()});
+          }));
+        }
+      }
+      response = await Promise.all(topicDeletions);
+      logger.debug({functionName, response});
+    }
+  } catch (error) {
+    logger.error({functionName, stage: process.env.stage, error: error.toString()});
+    throw new Error(error);
+  }
+}
+
+const adminDeleteAllSubscriptions = async () => {
+  const functionName = "adminDeleteAllSubscriptions";
+
+  try {
+    let response = await snsClient.listSubscriptions().promise();
+    logger.debug({functionName, response});
+    if (response && response.Subscriptions) {
+      const subDeletions = []
+      for (const sub of response.Subscriptions) {
+        const params = {
+          "SubscriptionArn": sub.SubscriptionArn
+        };
+        if (sub.TopicArn.includes(constants.BRAND.RITEAID_STORE)) {
+          subDeletions.push(snsClient.unsubscribe(params).promise().catch(error => {
+            logger.error({functionName, sub, error: error.toString()});
+          }));
+        }
+      }
+      response = await Promise.all(subDeletions);
+      logger.debug({functionName, response});
+    }
+  } catch (error) {
+    logger.error({functionName, stage: process.env.stage, error: error.toString()});
+    throw new Error(error);
+  }
+}
+
 module.exports = {
   createTopicForPharmacy,
   subscribePersonToPharmacy,
-  alertAllToAvailabilityAtPharmacies
+  alertAllToAvailabilityAtPharmacies,
+  alertSubscriptionState,
+  // adminDeleteAllTopics,
+  // adminDeleteAllSubscriptions
 };

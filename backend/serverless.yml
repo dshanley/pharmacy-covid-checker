@@ -103,6 +103,7 @@ plugins:
   - serverless-prune-plugin
 
 package:
+  individually: true
   exclude:
   - coverage/**
   - .circleci/**
@@ -140,6 +141,9 @@ custom:
     prod: vaccinenotifier.org
     dev: dev.vaccinenotifier.org
     local: localhost:3000
+  rate:
+    prod: 1 minute
+    dev: 3 minutes
   debug_pct:
     prod: 0
     dev: 100
@@ -152,7 +156,10 @@ custom:
     automatic: true
     number: 5
   webpack:
-    webpackConfig: './webpack.config.js'    
+    webpackConfig: './webpack.config.js'
+    includeModules:
+      forceExclude:
+        - aws-sdk
   # Using https://github.com/amplify-education/serverless-domain-manager#readme
   # https://github.com/pavel-ignatiev/serverless-domain-manager
   customDomain:
@@ -200,7 +207,7 @@ functions:
   jobCheckForVaccineSlots:
     handler: src/jobs.checkForVaccineSlots
     events:
-      - schedule: rate(3 minutes)
+      - schedule: rate(${self:custom.rate.${self:custom.stage}, "5 minutes"})
     timeout: 300 # seconds, longer timeout for processing
   
 # CloudFormation resource templates here
@@ -252,22 +259,25 @@ resources:
       Properties:
         TableName: ${self:provider.environment.tableSubscriptions}
         AttributeDefinitions:
-          - AttributeName: storeKey
+          - AttributeName: stageStoreKey
             AttributeType: S
           - AttributeName: phoneMobile
             AttributeType: S
         KeySchema:
-          - AttributeName: storeKey
+          - AttributeName: stageStoreKey
             KeyType: HASH
           - AttributeName: phoneMobile
             KeyType: RANGE
-        GlobalSecondaryIndexes:
-        - IndexName: idxGsiPhone
-          KeySchema:
-          - AttributeName: phoneMobile
-            KeyType: HASH
-          Projection:
-            ProjectionType: ALL
+        TimeToLiveSpecification:
+          AttributeName: expiration
+          Enabled: true
+        # GlobalSecondaryIndexes:
+        # - IndexName: idxGsiPhone
+        #   KeySchema:
+        #   - AttributeName: phoneMobile
+        #     KeyType: HASH
+        #   Projection:
+        #     ProjectionType: ALL
         BillingMode: PAY_PER_REQUEST
 
     # CORS for 4xx and 5xx responses 
