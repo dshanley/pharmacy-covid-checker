@@ -46,6 +46,8 @@ const ZIP_CODE_REG_EXP = /^[0-9]{5}$/; // GOTCHA: slightly different from patter
 // const MAX_PHARMACIES = 100; // NOTE: Uncomment to enable maximum # of pharmacies
 const PHONE_NUMBER_REG_EXP = /^[0-9]{3}-[0-9]{3}-[0-9]{4}$/;
 
+const LOADING_STRING = 'Loading...';
+
 const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
   const { zipCode, pharmacies } = useContext(NotifierFormContext);
   const [submitting, setSubmitting] = useState(false);
@@ -144,11 +146,9 @@ const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
           <input
             type="submit"
             className="btn"
-            value="Next"
+            value={submitting ? LOADING_STRING : 'Next'}
             disabled={submitting}
-          />{' '}
-          <br />
-          {submitting ? 'Loading...' : null}
+          />
         </div>
       </form>
     </div>
@@ -333,11 +333,9 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
         <input
           type="submit"
           className="btn"
-          value="Subscribe"
+          value={submitting ? LOADING_STRING : 'Subscribe'}
           disabled={submitting}
-        />{' '}
-        <br />
-        {submitting ? 'Loading...' : null}
+        />
       </form>
     </div>
   );
