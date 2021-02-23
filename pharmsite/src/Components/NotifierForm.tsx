@@ -48,7 +48,7 @@ const PHONE_NUMBER_REG_EXP = /^[0-9]{3}-[0-9]{3}-[0-9]{4}$/;
 
 const LOADING_STRING = 'Loading...';
 
-const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
+const NotifierFormStepOne: WizardStep = ({ index, back, forward }) => {
   const { zipCode, pharmacies } = useContext(NotifierFormContext);
   const [submitting, setSubmitting] = useState(false);
 
@@ -67,11 +67,11 @@ const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
     ? styles.invalidField
     : undefined;
 
-  const zipCodeMessageClassName = zipCodeValid
-    ? styles.validMessage
-    : zipCode.touched
-    ? styles.invalidMessage
-    : undefined;
+  // const zipCodeMessageClassName = zipCodeValid
+  //   ? styles.validMessage
+  //   : zipCode.touched
+  //   ? styles.invalidMessage
+  //   : undefined;
 
   const next = async () => {
     try {
@@ -102,7 +102,7 @@ const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
 
       pharmacies.set([]);
       pharmacies.setOptions(nextOptions);
-      setIndex(index + 1);
+      forward()
     } catch (e) {
       alert(e);
     } finally {
@@ -154,19 +154,16 @@ const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
   );
 };
 
-const NotifierFormStepTwo: WizardStep = ({ index, setIndex }) => {
+const NotifierFormStepTwo: WizardStep = ({ index, back, forward }) => {
   const { pharmacies } = useContext(NotifierFormContext);
   const pharmaciesValidMin = pharmacies.value.length > 0;
   // // NOTE: Uncomment to enable maximum # of pharmacies
   // const pharmaciesValidMax = pharmacies.value.length <= MAX_PHARMACIES;
-  const back = () => {
-    setIndex(index - 1);
-  };
   const next = () => {
     // // NOTE: Uncomment to enable maximum # of pharmacies
     // if (pharmaciesValidMin && pharmaciesValidMax) {
     if (pharmaciesValidMin) {
-      setIndex(index + 1);
+      forward()
     } else {
       alert('Please select at least one store');
     }
@@ -228,7 +225,7 @@ const NotifierFormStepTwo: WizardStep = ({ index, setIndex }) => {
   );
 };
 
-const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
+const NotifierFormStepThree: WizardStep = ({ index, forward, back }) => {
   const { mobileNumber, pharmacies } = useContext(NotifierFormContext);
   const [submitting, setSubmitting] = useState(false);
   const mobileNumberValid = PHONE_NUMBER_REG_EXP.test(mobileNumber.value);
@@ -252,9 +249,6 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
     ? styles.invalidMessage
     : undefined;
 
-  const back = () => {
-    setIndex(index - 1);
-  };
   const subscribe = async () => {
     try {
       setSubmitting(true);
@@ -270,7 +264,7 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
         },
       );
       if (res.status === 200) {
-        setIndex(index + 1);
+        forward()
       } else {
         throw new Error(`status: ${res.status} ${res.statusText}`);
       }

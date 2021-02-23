@@ -1,8 +1,9 @@
 import { useState } from 'react';
 
 export type WizardProps = {
+  forward: () => void;
+  back: () => void;
   index: number;
-  setIndex: (arg: number) => void;
 };
 
 export type WizardTemplate = (
@@ -15,7 +16,17 @@ export type WizardStep = (arg: WizardProps) => JSX.Element;
 export const Wizard = ({ steps }: { steps: WizardStep[] }) => {
   console.log('Rendering wizard component...');
   const [index, setIndex] = useState(0);
-  const props = { index, setIndex };
+  const props = {
+    forward: () => {
+      window.scrollTo(0,0);
+      setIndex(index + 1);
+    },
+    back: () => {
+      window.scrollTo(0,0);
+      setIndex(index - 1);
+    },
+    index,
+  };
   const CurrentStep = steps[index];
   return <CurrentStep {...props} />;
 };
