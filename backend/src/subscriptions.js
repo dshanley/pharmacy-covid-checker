@@ -103,13 +103,16 @@ const alertAllToAvailabilityAtPharmacies = async (storesNowAvailable) => {
     const smsBroadcasts = [];
     
     for (const store of storesNowAvailable) {
-      const params = {
-        Message: `Availability at RiteAid ${store.storeId}: ${store.address}. ${constants.BRAND.RITEAID_URL}`,
-        TopicArn: `${process.env.snsTopicArnString}:${process.env.stage}-${store.id}`
-      };
-      smsBroadcasts.push(snsClient.publish(params).promise().catch( error => {
-        logger.error({functionName, store, error: error.toString()});
-      }));
+      if (store) {
+        const params = {
+          Message: `Availability at RiteAid ${store.storeId}: ${store.address}. ${constants.BRAND.RITEAID_URL}`,
+          TopicArn: `${process.env.snsTopicArnString}:${process.env.stage}-${store.id}`
+        };
+        logger.info({functionName, store, params});
+        smsBroadcasts.push(snsClient.publish(params).promise().catch( error => {
+          logger.error({functionName, store, error: error.toString()});
+        }));
+      }
     }
     const response = await Promise.all(smsBroadcasts);
     logger.debug({functionName, response});

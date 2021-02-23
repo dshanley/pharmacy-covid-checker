@@ -141,6 +141,9 @@ custom:
     prod: vaccinenotifier.org
     dev: dev.vaccinenotifier.org
     local: localhost:3000
+  rate:
+    prod: 1 minute
+    dev: 3 minutes
   debug_pct:
     prod: 0
     dev: 100
@@ -204,7 +207,7 @@ functions:
   jobCheckForVaccineSlots:
     handler: src/jobs.checkForVaccineSlots
     events:
-      - schedule: rate(3 minutes)
+      - schedule: rate(${self:custom.rate.${self:custom.stage}, "5 minutes"})
     timeout: 300 # seconds, longer timeout for processing
   
 # CloudFormation resource templates here

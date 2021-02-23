@@ -25,7 +25,7 @@ const pollForVaccineSlots = async () => {
         "referrer": "https://www.riteaid.com/pharmacy/apt-scheduler",
         "authority": "www.riteaid.com"
       }
-      return rest.request("GET", null, headers, storeUrl).then( result => {
+      return rest.request("GET", storeUrl, null, headers).then( result => {
         if (result && result.Status === "SUCCESS") {
           if (result.Data && result.Data.slots) {
             const validSite = Object.values(result.Data.slots).includes(true);
@@ -130,14 +130,15 @@ const updatePharmState = async (allStores, storeCheckResults) => {
       }).catch( error => {
         if (error.code === 'ConditionalCheckFailedException') {
           // we just won't do the update, it's fine
-          return;
+          return [];
         }
         logger.error({functionName, store, error: error.toString()});
       }))
     }
     const updatedStores = await Promise.all(batchUpdates);
     logger.debug({functionName, updatedStores, info: "only updated stores"});
-    return updatedStores;
+    
+    return updatedStores !== null ? updatedStores : [];
 
   } catch (error) {
     logger.error({functionName, error: error.toString()});

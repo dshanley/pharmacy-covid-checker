@@ -25,6 +25,10 @@ custom:
     Fn::GetAtt:
       - CloudFrontDistribution
       - DomainName
+  infoSiteCFDomainName:
+    Fn::GetAtt:
+      - InfoSiteDistribution
+      - DomainName
 
 resources:
   Resources:
@@ -32,6 +36,15 @@ resources:
       Type: AWS::S3::Bucket
       Properties:
         BucketName: ${self:custom.domains.${self:custom.stage}}
+        AccessControl: PublicRead
+        WebsiteConfiguration:
+          IndexDocument: index.html
+          ErrorDocument: index.html
+      # DeletionPolicy: Retain
+    InfoSiteBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: info.vaccinenotifier.org
         AccessControl: PublicRead
         WebsiteConfiguration:
           IndexDocument: index.html
@@ -48,6 +61,17 @@ resources:
             Principal: '*'
             Action: s3:GetObject
             Resource: "arn:aws:s3:::${self:custom.domains.${self:custom.stage}}/*"
+    InfoSiteBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: info.vaccinenotifier.org
+        PolicyDocument:
+          Statement:
+          - Sid: PublicReadForGetBucketObjects
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: "arn:aws:s3:::info.vaccinenotifier.org/*"
     CloudFrontDistribution:
       Type: AWS::CloudFront::Distribution
       Properties:
@@ -96,6 +120,52 @@ resources:
                 HTTPPort: '80'
                 HTTPSPort: '443'
                 OriginProtocolPolicy: http-only
+    InfoSiteDistribution:
+      Type: AWS::CloudFront::Distribution
+      Properties:
+        Tags:
+          - Key: service
+            Value: frontend
+        DistributionConfig:
+          PriceClass: PriceClass_100
+          HttpVersion: http2
+          Comment: 
+            Ref: AWS::StackName
+          DefaultCacheBehavior:
+            TargetOriginId: S3-info-vaccinenotifier.org
+            ViewerProtocolPolicy: 'redirect-to-https'
+            DefaultTTL: 30
+            Compress: true
+            ForwardedValues:
+              QueryString: true
+              Headers: 
+                - '*'
+          Enabled: true
+          DefaultRootObject: index.html
+          ## Since the Single Page App is taking care of the routing we need to make sure every path is served with index.html
+          ## The only exception are files that actually exist e.h. app.js, reset.css
+          CustomErrorResponses:
+            - ErrorCode: 404
+              ResponseCode: 200
+              ErrorCachingMinTTL: 86400
+              ResponsePagePath: /index.html
+            - ErrorCode: 403
+              ResponseCode: 200
+              ErrorCachingMinTTL: 86400
+              ResponsePagePath: /index.html
+          Aliases:
+            - "info.vaccinenotifier.org"
+          ViewerCertificate: 
+            SslSupportMethod: sni-only
+            AcmCertificateArn: arn:aws:acm:us-east-1:965433530356:certificate/f5fa7bd7-4e01-4f54-b56f-375cf6e9ca8d
+            MinimumProtocolVersion: TLSv1.1_2016
+          Origins:
+            - Id: S3-info-vaccinenotifier.org
+              DomainName: info.vaccinenotifier.org.s3-website-us-west-2.amazonaws.com
+              CustomOriginConfig:
+                HTTPPort: '80'
+                HTTPSPort: '443'
+                OriginProtocolPolicy: http-only
     WebsiteDNSName:
         Type: AWS::Route53::RecordSetGroup
         Properties:
@@ -106,3 +176,13 @@ resources:
             AliasTarget:
               HostedZoneId: ${self:custom.hostedZoneId}
               DNSName: ${self:custom.cloudFrontDomainName}
+    InfoSiteDNSName:
+        Type: AWS::Route53::RecordSetGroup
+        Properties:
+          HostedZoneName: 'vaccinenotifier.org.'
+          RecordSets:
+          - Name: info.vaccinenotifier.org
+            Type: A
+            AliasTarget:
+              HostedZoneId: ${self:custom.hostedZoneId}
+              DNSName: ${self:custom.infoSiteCFDomainName}
