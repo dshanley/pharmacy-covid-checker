@@ -141,7 +141,12 @@ const NotifierFormStepOne: WizardStep = ({ index, setIndex }) => {
         <br />
         <br />
         <div>
-          <input type="submit" className="btn" value="Next" disabled={submitting} />{' '}
+          <input
+            type="submit"
+            className="btn"
+            value="Next"
+            disabled={submitting}
+          />{' '}
           <br />
           {submitting ? 'Loading...' : null}
         </div>
@@ -203,7 +208,7 @@ const NotifierFormStepTwo: WizardStep = ({ index, setIndex }) => {
                   <div className="storeAddress">
                     <span className={disabled ? styles.disabled : undefined}>
                       <strong>RiteAid</strong>
-                      <br/>
+                      <br />
                       {option.address}
                     </span>
                   </div>
@@ -214,7 +219,12 @@ const NotifierFormStepTwo: WizardStep = ({ index, setIndex }) => {
         </ol>
       </div>
       <br />
-      <button className="btn-ghost" onClick={back}>Back</button> <button className="btn" onClick={next}>Next</button>
+      <button className="btn-ghost" onClick={back}>
+        Back
+      </button>{' '}
+      <button className="btn" onClick={next}>
+        Next
+      </button>
     </div>
   );
 };
@@ -274,9 +284,7 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
   return (
     <div>
       <h2>Step {index + 1}: Mobile number</h2>
-        <p>
-          Enter a valid number that can receive text messages.
-        </p>
+      <p>Enter a valid number that can receive text messages.</p>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -322,7 +330,12 @@ const NotifierFormStepThree: WizardStep = ({ index, setIndex }) => {
         <button type="button" className="btn-ghost" onClick={back}>
           Back
         </button>{' '}
-        <input type="submit" className="btn" value="Subscribe" disabled={submitting} />{' '}
+        <input
+          type="submit"
+          className="btn"
+          value="Subscribe"
+          disabled={submitting}
+        />{' '}
         <br />
         {submitting ? 'Loading...' : null}
       </form>
@@ -337,12 +350,14 @@ const NotifierFormStepFour = () => {
   return (
     <div>
       <h2>Success</h2>
-      <ul>
+      <ul className="nobullet">
         <li>You'll get a text message now to confirm you're subscribed.</li>
         <li>We'll notify you when vaccine becomes available at a store.</li>
         <li>Follow the link to qualify and register your spot.</li>
       </ul>
-      <button className="btn" onClick={restart}>Start Over</button>
+      <button className="btn" onClick={restart}>
+        Start Over
+      </button>
     </div>
   );
 };
