@@ -145,7 +145,7 @@ custom:
     prod: 1 minute
     dev: 3 minutes
   debug_pct:
-    prod: 0
+    prod: 100
     dev: 100
     local: 100
   log_level:

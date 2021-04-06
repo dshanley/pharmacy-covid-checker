@@ -103,7 +103,7 @@ const alertAllToAvailabilityAtPharmacies = async (storesNowAvailable) => {
     const smsBroadcasts = [];
     
     for (const store of storesNowAvailable) {
-      if (store) {
+      if (store && store !== []) {
         const params = {
           Message: `Availability at RiteAid ${store.storeId}: ${store.address}. ${constants.BRAND.RITEAID_URL}`,
           TopicArn: `${process.env.snsTopicArnString}:${process.env.stage}-${store.id}`

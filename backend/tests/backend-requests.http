@@ -1,4 +1,10 @@
 ### DEV
+#### RITEAID
+###
+GET https://www.riteaid.com/services/ext/v2/vaccine/checkSlots?storeNumber=5358
+###
+GET https://www.riteaid.com/services/ext/v2/vaccine/checkSlots?storeNumber=5358
+
 ###
 GET https://dev-api.vaccinenotifier.org/notifier/v1/version
 ###
